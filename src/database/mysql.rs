@@ -11,4 +11,6 @@ impl DatabaseVerifier for Mysql {
         _messages: &mut Messages,
     ) {
     }
+
+    fn verify_fortunes_are_dynamically_sized(&self, messages: &mut Messages) {}
 }
