@@ -16,7 +16,7 @@ impl Verifier for Plaintext {
             ContentType::Plaintext,
             &mut messages,
         );
-        let response_body = get_response_body(&url, &response_headers)?;
+        let response_body = get_response_body(&url, &mut messages);
         messages.body(&response_body);
 
         self.verify_plaintext(&response_body, &mut messages);

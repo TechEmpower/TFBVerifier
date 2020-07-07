@@ -29,4 +29,10 @@ pub enum VerifierError {
 
     #[error("Invalid database type error: {0}")]
     InvalidDatabaseType(String),
+
+    #[error("Non-200 response from {0}: {1}")]
+    Non200Response(String, u32),
+
+    #[error("Error requesting {0}: {1}")]
+    RequestError(String, String),
 }

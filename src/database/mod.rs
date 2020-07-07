@@ -56,6 +56,7 @@ pub trait DatabaseVerifier {
     /// the number of updated rows.
     fn verify_queries_count(
         &self,
+        url: &str,
         concurrency: i32,
         repetitions: i32,
         expected_queries: i32,

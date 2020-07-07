@@ -7,6 +7,7 @@ mod test_type;
 
 extern crate html5ever;
 extern crate strum;
+extern crate threadpool;
 
 use crate::error::VerifierResult;
 use crate::logger::{log, LogOptions};

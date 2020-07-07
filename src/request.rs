@@ -1,3 +1,4 @@
+use crate::error::VerifierError::{Non200Response, RequestError};
 use crate::error::VerifierResult;
 use crate::logger::{log, LogOptions};
 use crate::message::Messages;
@@ -12,7 +13,6 @@ pub enum ContentType {
 }
 
 struct Collector(Vec<u8>);
-
 impl Handler for Collector {
     fn write(&mut self, data: &[u8]) -> Result<usize, WriteError> {
         self.0.extend_from_slice(data);
@@ -20,7 +20,19 @@ impl Handler for Collector {
     }
 }
 
-pub fn get_response_body(url: &str, headers: &HashMap<String, String>) -> VerifierResult<String> {
+pub fn request(url: &str) -> VerifierResult<Vec<u8>> {
+    let mut easy = Easy2::new(Collector(Vec::new()));
+    easy.url(url)?;
+    easy.perform()?;
+
+    match easy.response_code() {
+        Ok(200) => Ok(easy.get_ref().0.clone()),
+        Ok(code) => Err(Non200Response(url.to_string(), code)),
+        Err(e) => Err(RequestError(url.to_string(), e.to_string())),
+    }
+}
+
+pub fn get_response_body(url: &str, messages: &mut Messages) -> String {
     log(
         format!("Accessing URL {}", url).cyan(),
         LogOptions {
@@ -29,25 +41,27 @@ pub fn get_response_body(url: &str, headers: &HashMap<String, String>) -> Verifi
             quiet: false,
         },
     );
-    let mut easy = Easy2::new(Collector(Vec::new()));
-    easy.url(url)?;
-    easy.perform()?;
 
-    let mut messages = Messages::new(url);
-    messages.headers(headers);
-    match easy.response_code() {
-        Ok(200) => {}
-        Ok(code) => messages.error(
-            format!("Non-200 response from {}: {}", url, code),
-            "Non-200 response",
-        ),
-        Err(e) => messages.error(
-            format!("Error requesting {}: {}", url, e.to_string()),
-            "Request error",
-        ),
-    };
-
-    Ok(String::from_utf8_lossy(&easy.get_ref().0).to_string())
+    match request(url) {
+        Ok(bytes) => String::from_utf8_lossy(&*bytes).to_string(),
+        Err(e) => match e {
+            Non200Response(url, code) => {
+                messages.error(
+                    format!("Non-200 response from {}: {}", url, code),
+                    "Non-200 response",
+                );
+                String::new()
+            }
+            RequestError(url, err_string) => {
+                messages.error(
+                    format!("Error requesting {}: {}", url, err_string),
+                    "Request error",
+                );
+                String::new()
+            }
+            _ => String::new(),
+        },
+    }
 }
 
 pub fn get_response_headers(url: &str) -> VerifierResult<HashMap<String, String>> {

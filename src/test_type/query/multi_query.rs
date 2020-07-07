@@ -44,7 +44,7 @@ impl Verifier for MultiQuery {
             let expected_length = self.translate_query_count(*test_case, min, max);
             let url = format!("{}{}", url, test_case);
 
-            let response_body = get_response_body(&url, &response_headers)?;
+            let response_body = get_response_body(&url, &mut messages);
             messages.body(&response_body);
             self.verify_with_length(&response_body, expected_length, &mut messages);
 
@@ -54,6 +54,7 @@ impl Verifier for MultiQuery {
             // the same value it previously held
             if expected_length == max {
                 self.database_verifier.verify_queries_count(
+                    &url,
                     concurrency,
                     repetitions,
                     expected_queries,

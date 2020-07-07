@@ -12,7 +12,7 @@ impl Verifier for Json {
         let response_headers = get_response_headers(&url)?;
         messages.headers(&response_headers);
         self.verify_headers(&response_headers, &url, ContentType::Json, &mut messages);
-        let response_body = get_response_body(&url, &response_headers)?;
+        let response_body = get_response_body(&url, &mut messages);
         messages.body(&response_body);
 
         self.verify_json(&response_body, &mut messages);

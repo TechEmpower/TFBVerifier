@@ -31,7 +31,7 @@ impl Verifier for Fortune {
         messages.headers(&response_headers);
         self.verify_headers(&response_headers, &url, ContentType::Html, &mut messages);
 
-        let response_body = get_response_body(&url, &response_headers)?;
+        let response_body = get_response_body(&url, &mut messages);
         messages.body(&response_body);
 
         self.verify_fortune(&response_body, &mut messages);
