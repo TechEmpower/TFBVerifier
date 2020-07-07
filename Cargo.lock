@@ -488,6 +488,7 @@ dependencies = [
  "colored",
  "curl",
  "html5ever",
+ "num_cpus",
  "serde",
  "serde_json",
  "strum",
