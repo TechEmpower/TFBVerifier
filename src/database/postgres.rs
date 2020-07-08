@@ -3,9 +3,8 @@ use crate::logger::{log, LogOptions};
 use crate::message::Messages;
 use crate::request::request;
 use colored::Colorize;
-use std::ops::{Deref, DerefMut};
-use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicI32, AtomicU32, Ordering};
+use std::sync::Arc;
 use threadpool::ThreadPool;
 
 pub struct Postgres {}
@@ -31,14 +30,16 @@ impl DatabaseVerifier for Postgres {
 
         // todo - ask postgres for the number of db rows read
 
-        let transaction_failures: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
-        for _ in 0..repetitions - 1 {
-            let requests_to_send = Arc::new(Mutex::new(concurrency));
+        let transaction_failures = Arc::new(AtomicU32::new(0));
+        let transaction_successes = Arc::new(AtomicU32::new(0));
+        for _ in 0..repetitions {
+            let requests_to_send = Arc::new(AtomicI32::new(concurrency));
             let pool = ThreadPool::new(num_cpus::get());
 
             for _ in 0..num_cpus::get() {
-                let url = url.to_string();
-                let trans_fails: Arc<AtomicU32> = Arc::clone(&transaction_failures);
+                let url = format!("{}20", url);
+                let trans_fails = Arc::clone(&transaction_failures);
+                let trans_succs = Arc::clone(&transaction_successes);
                 let requests = Arc::clone(&requests_to_send);
                 pool.execute(move || {
                     // This loop attempts to keep a guarded count of the number
@@ -48,19 +49,25 @@ impl DatabaseVerifier for Postgres {
                     // expect 2 threads (this `execute` closure) with 256
                     // requests (loops).
                     loop {
-                        let mut guard = requests.lock().unwrap();
-                        if *guard >= 0 {
+                        let remaining = requests.load(Ordering::SeqCst);
+                        if remaining <= 0 {
                             break;
                         }
-                        if request(&*url).is_err() {
-                            trans_fails.fetch_add(1, Ordering::SeqCst);
-                        }
-                        *guard -= 1;
+                        match request(&*url) {
+                            Ok(_) => trans_succs.fetch_add(1, Ordering::SeqCst),
+                            Err(_) => trans_fails.fetch_add(1, Ordering::SeqCst),
+                        };
+                        requests.fetch_sub(1, Ordering::SeqCst);
                     }
                 });
             }
             pool.join();
         }
+        eprintln!(
+            "Successful requests: {}, failed requests: {}",
+            transaction_successes.load(Ordering::SeqCst),
+            transaction_failures.load(Ordering::SeqCst)
+        );
 
         // todo - ask postgres for the number of db queries run again; find difference
 

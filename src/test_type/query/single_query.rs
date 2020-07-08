@@ -28,7 +28,7 @@ impl Verifier for SingleQuery {
 
         self.verify_single_query(&response_body, &mut messages);
         self.database_verifier.verify_queries_count(
-            &url,
+            url,
             concurrency,
             repetitions,
             expected_queries,
