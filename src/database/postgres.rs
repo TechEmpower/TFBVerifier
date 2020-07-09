@@ -1,20 +1,50 @@
 use crate::database::DatabaseVerifier;
 use crate::logger::{log, LogOptions};
 use crate::message::Messages;
-use crate::request::request;
 use colored::Colorize;
-use std::sync::atomic::{AtomicI32, AtomicU32, Ordering};
-use std::sync::Arc;
-use threadpool::ThreadPool;
+use postgres::{Client, NoTls};
 
 pub struct Postgres {}
+impl Postgres {
+    /// Queries the PostgreSQL database for the number of queries at this
+    /// moment and returns that count.
+    fn get_queries(&self, table_name: &str) -> i32 {
+        let query = format!(
+            "SELECT CAST(SELECT SUM(calls) FROM pg_stat_statements WHERE query ~* '[[:<:]]{}[[:>:]]') AS INTEGER",
+            table_name
+        );
+        match Client::connect(
+            "postgresql://benchmarkdbuser:benchmarkdbpass@tfb-database/hello_world",
+            NoTls,
+        ) {
+            Ok(mut client) => match client.query(&*query, &[]) {
+                Ok(rows) => {
+                    for row in rows {
+                        dbg!(&row);
+                        let sum: i32 = row.get("sum");
+                        eprintln!("sum: {}", sum);
+                    }
+                }
+                Err(e) => {
+                    dbg!(e);
+                }
+            },
+            Err(e) => {
+                dbg!(e);
+            }
+        };
+        0
+    }
+}
 impl DatabaseVerifier for Postgres {
     fn verify_queries_count(
         &self,
         url: &str,
+        table_name: &str,
         concurrency: i32,
         repetitions: i32,
         _expected_queries: i32,
+        _check_updates: bool,
         _messages: &mut Messages,
     ) {
         log(
@@ -26,47 +56,23 @@ impl DatabaseVerifier for Postgres {
             },
         );
 
-        // todo - ask postgres for the number of db queries run
+        self.get_queries(table_name);
 
         // todo - ask postgres for the number of db rows read
 
-        let transaction_failures = Arc::new(AtomicU32::new(0));
-        let transaction_successes = Arc::new(AtomicU32::new(0));
-        for _ in 0..repetitions {
-            let requests_to_send = Arc::new(AtomicI32::new(concurrency));
-            let pool = ThreadPool::new(num_cpus::get());
+        let (successes, failures) = self.issue_multi_query_requests(url, concurrency, repetitions);
 
-            for _ in 0..num_cpus::get() {
-                let url = format!("{}20", url);
-                let trans_fails = Arc::clone(&transaction_failures);
-                let trans_succs = Arc::clone(&transaction_successes);
-                let requests = Arc::clone(&requests_to_send);
-                pool.execute(move || {
-                    // This loop attempts to keep a guarded count of the number
-                    // of requests required (concurrency) and spawns threads
-                    // which "consume" a concurrency until there are no
-                    // requests left to be consumed. On a dual-core machine, we
-                    // expect 2 threads (this `execute` closure) with 256
-                    // requests (loops).
-                    loop {
-                        let remaining = requests.load(Ordering::SeqCst);
-                        if remaining <= 0 {
-                            break;
-                        }
-                        match request(&*url) {
-                            Ok(_) => trans_succs.fetch_add(1, Ordering::SeqCst),
-                            Err(_) => trans_fails.fetch_add(1, Ordering::SeqCst),
-                        };
-                        requests.fetch_sub(1, Ordering::SeqCst);
-                    }
-                });
-            }
-            pool.join();
-        }
-        eprintln!(
-            "Successful requests: {}, failed requests: {}",
-            transaction_successes.load(Ordering::SeqCst),
-            transaction_failures.load(Ordering::SeqCst)
+        log(
+            format!(
+                "Successful requests: {}, failed requests: {}",
+                successes, failures
+            )
+            .normal(),
+            LogOptions {
+                border: None,
+                border_bottom: None,
+                quiet: false,
+            },
         );
 
         // todo - ask postgres for the number of db queries run again; find difference

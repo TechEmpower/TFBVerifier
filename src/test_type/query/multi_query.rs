@@ -55,9 +55,11 @@ impl Verifier for MultiQuery {
             if expected_length == max {
                 self.database_verifier.verify_queries_count(
                     url,
+                    "world",
                     concurrency,
                     repetitions,
                     expected_queries,
+                    false,
                     &mut messages,
                 );
             }

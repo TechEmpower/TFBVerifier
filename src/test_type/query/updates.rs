@@ -38,19 +38,21 @@ impl Verifier for Updates {
             let response_body = get_response_body(&count_url, &mut messages);
             messages.body(&response_body);
             self.verify_with_length(&response_body, expected_length, &mut messages);
-            self.database_verifier.verify_queries_count(
-                url,
-                concurrency,
-                repetitions,
-                expected_queries,
-                &mut messages,
-            );
 
             // Only check update changes if we're testing the highest number of
             // queries, to ensure that we don't accidentally FAIL for a query
             // that only updates 1 item and happens to set its randomNumber to
             // the same value it previously held
             if expected_length == max {
+                self.database_verifier.verify_queries_count(
+                    url,
+                    "world",
+                    concurrency,
+                    repetitions,
+                    expected_queries,
+                    true,
+                    &mut messages,
+                );
                 self.verify_updates_count(
                     concurrency,
                     repetitions,
