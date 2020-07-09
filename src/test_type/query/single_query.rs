@@ -7,7 +7,7 @@ use crate::test_type::Verifier;
 use serde_json::Value;
 
 pub struct SingleQuery {
-    pub concurrency_levels: Vec<i32>,
+    pub concurrency_levels: Vec<i64>,
     pub database_verifier: Box<dyn DatabaseVerifier>,
 }
 impl Query for SingleQuery {}
@@ -22,9 +22,10 @@ impl Verifier for SingleQuery {
         messages.body(&response_body);
 
         // Initialization for query counting
-        let repetitions = 1;
+        let repetitions = 2;
         let concurrency = *self.concurrency_levels.iter().max().unwrap();
         let expected_queries = repetitions * concurrency;
+        let expected_rows = expected_queries;
 
         self.verify_single_query(&response_body, &mut messages);
         self.database_verifier.verify_queries_count(
@@ -33,8 +34,7 @@ impl Verifier for SingleQuery {
             concurrency,
             repetitions,
             expected_queries,
-            false,
-            &mut messages,
+            expected_rows,
         );
 
         Ok(messages)

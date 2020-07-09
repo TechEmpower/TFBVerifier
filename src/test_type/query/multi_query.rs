@@ -6,7 +6,7 @@ use crate::test_type::query::Query;
 use crate::test_type::Verifier;
 
 pub struct MultiQuery {
-    pub concurrency_levels: Vec<i32>,
+    pub concurrency_levels: Vec<i64>,
     pub database_verifier: Box<dyn DatabaseVerifier>,
 }
 impl Query for MultiQuery {}
@@ -27,10 +27,10 @@ impl Verifier for MultiQuery {
         let mut messages = Messages::new(url);
 
         // Initialization for query counting
-        let repetitions = 1;
+        let repetitions = 2;
         let concurrency = *self.concurrency_levels.iter().max().unwrap();
         let expected_queries = 20 * repetitions * concurrency;
-        let _expected_rows = expected_queries;
+        let expected_rows = expected_queries;
 
         let response_headers = get_response_headers(&url)?;
         messages.headers(&response_headers);
@@ -54,13 +54,12 @@ impl Verifier for MultiQuery {
             // the same value it previously held
             if expected_length == max {
                 self.database_verifier.verify_queries_count(
-                    url,
+                    &format!("{}20", url),
                     "world",
                     concurrency,
                     repetitions,
                     expected_queries,
-                    false,
-                    &mut messages,
+                    expected_rows,
                 );
             }
         }

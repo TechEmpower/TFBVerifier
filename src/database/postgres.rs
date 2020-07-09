@@ -1,86 +1,43 @@
 use crate::database::DatabaseVerifier;
-use crate::logger::{log, LogOptions};
-use crate::message::Messages;
-use colored::Colorize;
 use postgres::{Client, NoTls};
 
 pub struct Postgres {}
 impl Postgres {
-    /// Queries the PostgreSQL database for the number of queries at this
-    /// moment and returns that count.
-    fn get_queries(&self, table_name: &str) -> i32 {
-        let query = format!(
-            "SELECT CAST(SELECT SUM(calls) FROM pg_stat_statements WHERE query ~* '[[:<:]]{}[[:>:]]') AS INTEGER",
-            table_name
-        );
-        match Client::connect(
+    fn run_counting_query(&self, query: &str, output_column_name: &str) -> i64 {
+        if let Ok(mut client) = Client::connect(
             "postgresql://benchmarkdbuser:benchmarkdbpass@tfb-database/hello_world",
             NoTls,
         ) {
-            Ok(mut client) => match client.query(&*query, &[]) {
-                Ok(rows) => {
-                    for row in rows {
-                        dbg!(&row);
-                        let sum: i32 = row.get("sum");
-                        eprintln!("sum: {}", sum);
-                    }
+            if let Ok(rows) = client.query(&*query, &[]) {
+                if let Some(row) = rows.get(0) {
+                    let sum: i64 = row.get(output_column_name);
+                    return sum;
                 }
-                Err(e) => {
-                    dbg!(e);
-                }
-            },
-            Err(e) => {
-                dbg!(e);
             }
-        };
+        }
+        // todo - what do we do on any failure?
         0
     }
 }
 impl DatabaseVerifier for Postgres {
-    fn verify_queries_count(
-        &self,
-        url: &str,
-        table_name: &str,
-        concurrency: i32,
-        repetitions: i32,
-        _expected_queries: i32,
-        _check_updates: bool,
-        _messages: &mut Messages,
-    ) {
-        log(
-            format!("VERIFYING QUERY COUNT FOR {}", url).bright_white(),
-            LogOptions {
-                border: None,
-                border_bottom: None,
-                quiet: false,
-            },
+    fn get_count_of_all_queries_for_table(&self, table_name: &str) -> i64 {
+        let query = format!(
+            "SELECT SUM(calls::INTEGER) FROM pg_stat_statements WHERE query ~* '[[:<:]]{}[[:>:]]'",
+            table_name
         );
 
-        self.get_queries(table_name);
-
-        // todo - ask postgres for the number of db rows read
-
-        let (successes, failures) = self.issue_multi_query_requests(url, concurrency, repetitions);
-
-        log(
-            format!(
-                "Successful requests: {}, failed requests: {}",
-                successes, failures
-            )
-            .normal(),
-            LogOptions {
-                border: None,
-                border_bottom: None,
-                quiet: false,
-            },
-        );
-
-        // todo - ask postgres for the number of db queries run again; find difference
-
-        // todo - ask postgres for the number of db rows read again; find difference
-
-        // todo - logic for whether the test passed/errored (verify_queries_count)
+        self.run_counting_query(&query, "sum")
     }
 
-    fn verify_fortunes_are_dynamically_sized(&self, _messages: &mut Messages) {}
+    fn get_count_of_rows_selected_for_table(&self, table_name: &str) -> i64 {
+        let query = format!("SELECT SUM(rows::INTEGER) FROM pg_stat_statements WHERE query ~* '[[:<:]]{}[[:>:]]' AND query ~* 'select'", table_name);
+
+        self.run_counting_query(&query, "sum")
+    }
+
+    fn get_count_of_rows_updated_for_table(&self, table_name: &str) -> i64 {
+        let query = format!("SELECT SUM(rows::INTEGER) FROM pg_stat_statements WHERE query ~* '[[:<:]]{}[[:>:]]' AND query ~* 'update'", table_name);
+
+        self.run_counting_query(&query, "sum")
+    }
 }

@@ -12,7 +12,7 @@ use html5ever::tokenizer::{
 const FORTUNES: &str = "<!doctype html><html><head><title>Fortunes</title></head><body><table><tr><th>id</th><th>message</th></tr><tr><td>11</td><td>&lt;script&gt;alert(&quot;This should not be displayed in a browser alert box.&quot;);&lt;/script&gt;</td></tr><tr><td>4</td><td>A bad random number generator: 1, 1, 1, 1, 1, 4.33e+67, 1, 1, 1</td></tr><tr><td>5</td><td>A computer program does what you tell it to do, not what you want it to do.</td></tr><tr><td>2</td><td>A computer scientist is someone who fixes things that aren&apos;t broken.</td></tr><tr><td>8</td><td>A list is only as strong as its weakest link. — Donald Knuth</td></tr><tr><td>0</td><td>Additional fortune added at request time.</td></tr><tr><td>3</td><td>After enough decimal places, nobody gives a damn.</td></tr><tr><td>7</td><td>Any program that runs right is obsolete.</td></tr><tr><td>10</td><td>Computers make very fast, very accurate mistakes.</td></tr><tr><td>6</td><td>Emacs is a nice operating system, but I prefer UNIX. — Tom Christaensen</td></tr><tr><td>9</td><td>Feature: A bug with seniority.</td></tr><tr><td>1</td><td>fortune: No such file or directory</td></tr><tr><td>12</td><td>フレームワークのベンチマーク</td></tr></table></body></html>";
 
 pub struct Fortune {
-    pub concurrency_levels: Vec<i32>,
+    pub concurrency_levels: Vec<i64>,
     pub database_verifier: Box<dyn DatabaseVerifier>,
 }
 impl Verifier for Fortune {
@@ -22,10 +22,10 @@ impl Verifier for Fortune {
         let mut messages = Messages::new(url);
 
         // Initialization for query counting
-        let repetitions = 1;
+        let repetitions = 2;
         let concurrency = *self.concurrency_levels.iter().max().unwrap();
-        let expected_queries = 20 * repetitions * concurrency;
-        let _expected_rows = expected_queries;
+        let expected_queries = repetitions * concurrency;
+        let expected_rows = 12 * expected_queries;
 
         let response_headers = get_response_headers(&url)?;
         messages.headers(&response_headers);
@@ -35,8 +35,15 @@ impl Verifier for Fortune {
         messages.body(&response_body);
 
         self.verify_fortune(&response_body, &mut messages);
-
-        // todo - count the queries made to the db
+        self.database_verifier.verify_queries_count(
+            url,
+            "fortune",
+            concurrency,
+            repetitions,
+            expected_queries,
+            expected_rows,
+        );
+        self.verify_fortunes_are_dynamically_sized(&mut messages);
 
         Ok(messages)
     }
@@ -75,6 +82,16 @@ impl Fortune {
                 "Invalid Fortunes",
             );
         }
+    }
+
+    /// Checks that test implementations are using dynamically sized data
+    /// structures when gathering fortunes from the database.
+    ///
+    /// In practice, this function will connect to the database and add several
+    /// thousand fortunes, request the test implementation for its fortune test
+    /// again, and compare to expected output.
+    fn verify_fortunes_are_dynamically_sized(&self, _messages: &mut Messages) {
+        // todo
     }
 }
 

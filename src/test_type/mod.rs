@@ -54,7 +54,7 @@ impl TestType {
     pub fn get_verifier(
         &self,
         database_name: Option<String>,
-        concurrency_levels: Vec<i32>,
+        concurrency_levels: Vec<i64>,
     ) -> VerifierResult<Box<dyn Verifier>> {
         match self {
             TestType::Json => Ok(Box::new(Json {})),

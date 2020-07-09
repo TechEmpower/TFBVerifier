@@ -1,19 +1,16 @@
 use crate::database::DatabaseVerifier;
-use crate::message::Messages;
 
 pub struct Mysql {}
 impl DatabaseVerifier for Mysql {
-    fn verify_queries_count(
-        &self,
-        _url: &str,
-        _table_name: &str,
-        _concurrency: i32,
-        _repetitions: i32,
-        _expected_queries: i32,
-        _check_updates: bool,
-        _messages: &mut Messages,
-    ) {
+    fn get_count_of_all_queries_for_table(&self, _table_name: &str) -> i64 {
+        0
     }
 
-    fn verify_fortunes_are_dynamically_sized(&self, _messages: &mut Messages) {}
+    fn get_count_of_rows_selected_for_table(&self, _table_name: &str) -> i64 {
+        0
+    }
+
+    fn get_count_of_rows_updated_for_table(&self, _table_name: &str) -> i64 {
+        0
+    }
 }

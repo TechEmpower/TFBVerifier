@@ -10,10 +10,12 @@ use crate::database::mysql::Mysql;
 use crate::database::postgres::Postgres;
 use crate::error::VerifierError::InvalidDatabaseType;
 use crate::error::VerifierResult;
+use crate::logger::{log, LogOptions};
 use crate::message::Messages;
 use crate::request::request;
+use colored::Colorize;
 use std::str::FromStr;
-use std::sync::atomic::{AtomicI32, AtomicU32, Ordering};
+use std::sync::atomic::{AtomicI64, AtomicU32, Ordering};
 use std::sync::Arc;
 use strum_macros::EnumString;
 use threadpool::ThreadPool;
@@ -62,12 +64,62 @@ pub trait DatabaseVerifier {
         &self,
         url: &str,
         table_name: &str,
-        concurrency: i32,
-        repetitions: i32,
-        expected_queries: i32,
-        check_updates: bool,
-        messages: &mut Messages,
-    );
+        concurrency: i64,
+        repetitions: i64,
+        expected_queries: i64,
+        expected_rows: i64,
+    ) {
+        log(
+            format!("VERIFYING QUERY COUNT FOR {}", url).bright_white(),
+            LogOptions {
+                border: None,
+                border_bottom: None,
+                quiet: false,
+            },
+        );
+
+        let all_queries_before_count = self.get_count_of_all_queries_for_table(table_name);
+        eprintln!("all queries count before: {}", all_queries_before_count);
+
+        let all_rows_selected_before_count = self.get_count_of_rows_selected_for_table(table_name);
+        eprintln!(
+            "all rows selected before: {}",
+            all_rows_selected_before_count
+        );
+
+        let (successes, failures) = self.issue_multi_query_requests(url, concurrency, repetitions);
+
+        log(
+            format!(
+                "Successful requests: {}, failed requests: {}",
+                successes, failures
+            )
+            .normal(),
+            LogOptions {
+                border: None,
+                border_bottom: None,
+                quiet: false,
+            },
+        );
+
+        let all_queries_after_count = self.get_count_of_all_queries_for_table(table_name);
+        eprintln!(
+            "queries - expected: {}, actual: {}, equal: {}",
+            expected_queries,
+            all_queries_after_count - all_queries_before_count,
+            expected_queries == all_queries_after_count - all_queries_before_count
+        );
+
+        let all_rows_selected_after_count = self.get_count_of_rows_selected_for_table(table_name);
+        eprintln!(
+            "rows selected - expected: {}, actual {}, equal: {}",
+            expected_rows,
+            all_rows_selected_after_count - all_rows_selected_before_count,
+            expected_rows == all_rows_selected_after_count - all_rows_selected_before_count
+        );
+
+        // todo - logic for whether the test passed/errored (verify_queries_count)
+    }
 
     /// Issues `concurrency` requests to `url` exactly `repetition + 1` times
     /// in a concurrent fashion.
@@ -89,17 +141,17 @@ pub trait DatabaseVerifier {
     fn issue_multi_query_requests(
         &self,
         url: &str,
-        concurrency: i32,
-        repetitions: i32,
+        concurrency: i64,
+        repetitions: i64,
     ) -> (u32, u32) {
         let transaction_failures = Arc::new(AtomicU32::new(0));
         let transaction_successes = Arc::new(AtomicU32::new(0));
         for _ in 0..repetitions {
-            let requests_to_send = Arc::new(AtomicI32::new(concurrency - 1));
+            let requests_to_send = Arc::new(AtomicI64::new(concurrency - 1));
             let pool = ThreadPool::new(num_cpus::get());
 
             for _ in 0..num_cpus::get() {
-                let url = format!("{}20", url);
+                let url = url.to_string();
                 let transaction_failures = Arc::clone(&transaction_failures);
                 let transaction_successes = Arc::clone(&transaction_successes);
                 let requests = Arc::clone(&requests_to_send);
@@ -123,13 +175,11 @@ pub trait DatabaseVerifier {
         )
     }
 
-    /// Checks that test implementations are using dynamically sized data
-    /// structures when gathering fortunes from the database.
-    ///
-    /// In practice, this function will connect to the database and add several
-    /// thousand fortunes, request the test implementation for its fortune test
-    /// again, and compare to expected output.
-    fn verify_fortunes_are_dynamically_sized(&self, messages: &mut Messages);
+    fn get_count_of_all_queries_for_table(&self, table_name: &str) -> i64;
+
+    fn get_count_of_rows_selected_for_table(&self, table_name: &str) -> i64;
+
+    fn get_count_of_rows_updated_for_table(&self, table_name: &str) -> i64;
 }
 
 //

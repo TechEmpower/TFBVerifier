@@ -6,7 +6,7 @@ use crate::test_type::query::Query;
 use crate::test_type::Verifier;
 
 pub struct CachedQuery {
-    pub concurrency_levels: Vec<i32>,
+    pub concurrency_levels: Vec<i64>,
     pub database_verifier: Box<dyn DatabaseVerifier>,
 }
 impl Query for CachedQuery {}
@@ -15,7 +15,7 @@ impl Verifier for CachedQuery {
         let mut messages = Messages::new(url);
 
         // Initialization for query counting
-        let repetitions = 1;
+        let repetitions = 2;
         let concurrency = *self.concurrency_levels.iter().max().unwrap();
         let expected_queries = 20 * repetitions * concurrency;
         let _expected_rows = expected_queries;
