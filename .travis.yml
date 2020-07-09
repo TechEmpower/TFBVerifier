@@ -1,0 +1,24 @@
+language: rust
+
+rust:
+  # "The Rust team appreciates testing against the beta and
+  # nightly channels, even if you are only targeting stable."
+  - stable
+  - nightly
+
+os:
+  - linux
+  - windows
+  - osx
+
+jobs:
+  allow_failures:
+    - rust: nightly
+  fast_finish: true
+
+env:
+  global:
+    - "RUST_BACKTRACE=full"
+
+script:
+  - cargo test -- --nocapture
