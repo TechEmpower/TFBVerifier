@@ -34,7 +34,15 @@ impl Verifier for SingleQuery {
             concurrency,
             repetitions,
             expected_queries,
+            &mut messages,
+        );
+        self.database_verifier.verify_rows_count(
+            url,
+            "world",
+            concurrency,
+            repetitions,
             expected_rows,
+            &mut messages,
         );
 
         Ok(messages)

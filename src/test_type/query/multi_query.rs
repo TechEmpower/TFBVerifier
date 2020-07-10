@@ -59,7 +59,15 @@ impl Verifier for MultiQuery {
                     concurrency,
                     repetitions,
                     expected_queries,
+                    &mut messages,
+                );
+                self.database_verifier.verify_rows_count(
+                    &format!("{}20", url),
+                    "world",
+                    concurrency,
+                    repetitions,
                     expected_rows,
+                    &mut messages,
                 );
             }
         }

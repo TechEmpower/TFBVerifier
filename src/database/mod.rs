@@ -10,10 +10,10 @@ use crate::database::mysql::Mysql;
 use crate::database::postgres::Postgres;
 use crate::error::VerifierError::InvalidDatabaseType;
 use crate::error::VerifierResult;
-use crate::logger::{log, LogOptions};
 use crate::message::Messages;
 use crate::request::request;
-use colored::Colorize;
+use std::cmp;
+use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::atomic::{AtomicI64, AtomicU32, Ordering};
 use std::sync::Arc;
@@ -48,18 +48,11 @@ impl Database {
 }
 
 pub trait DatabaseVerifier {
-    /// Checks that the number of executed queries, at the given concurrency
-    /// level, corresponds to: the total number of http requests made * the
-    /// number of queries per request.
-    ///
-    /// No margin is accepted on the number of queries, which seems reliable.
-    ///
-    /// On the number of rows read or updated, the margin related to the
-    /// database applies (1% by default see cls.margin)
-    ///
-    /// On updates, if the use of bulk updates is detected (number of requests
-    /// close to that expected), a margin (5% see bulk_margin) is allowed on
-    /// the number of updated rows.
+    fn get_all_from_world_table(&self) -> Option<HashMap<i32, i32>>;
+
+    /// Checks that the number queries issued by the application after
+    /// requesting `url` a known number of times (given by
+    /// `concurrency` * `repetitions`) are equal.
     fn verify_queries_count(
         &self,
         url: &str,
@@ -67,58 +60,46 @@ pub trait DatabaseVerifier {
         concurrency: i64,
         repetitions: i64,
         expected_queries: i64,
-        expected_rows: i64,
+        messages: &mut Messages,
     ) {
-        log(
-            format!("VERIFYING QUERY COUNT FOR {}", url).bright_white(),
-            LogOptions {
-                border: None,
-                border_bottom: None,
-                quiet: false,
-            },
-        );
-
         let all_queries_before_count = self.get_count_of_all_queries_for_table(table_name);
-        eprintln!("all queries count before: {}", all_queries_before_count);
 
-        let all_rows_selected_before_count = self.get_count_of_rows_selected_for_table(table_name);
-        eprintln!(
-            "all rows selected before: {}",
-            all_rows_selected_before_count
-        );
-
-        let (successes, failures) = self.issue_multi_query_requests(url, concurrency, repetitions);
-
-        log(
-            format!(
-                "Successful requests: {}, failed requests: {}",
-                successes, failures
-            )
-            .normal(),
-            LogOptions {
-                border: None,
-                border_bottom: None,
-                quiet: false,
-            },
-        );
+        self.issue_multi_query_requests(url, concurrency, repetitions, messages);
 
         let all_queries_after_count = self.get_count_of_all_queries_for_table(table_name);
-        eprintln!(
-            "queries - expected: {}, actual: {}, equal: {}",
-            expected_queries,
-            all_queries_after_count - all_queries_before_count,
-            expected_queries == all_queries_after_count - all_queries_before_count
-        );
+
+        let queries = all_queries_after_count - all_queries_before_count;
+        match queries.cmp(&expected_queries) {
+            cmp::Ordering::Greater => messages.warning(format!("{} Executed queries in the database instead of {} expected. This number is excessively high.", queries, expected_queries), "Extra Queries"),
+            cmp::Ordering::Less => messages.error(format!("Only {} executed queries in the database out of roughly {} expected.", queries, expected_queries), "Too Few Queries"),
+            _ => {}
+        };
+    }
+
+    /// Checks that the number of rows that were selected by the application
+    /// after requesting `url` a known number of times (given by
+    /// `concurrency` * `repetitions`) are equal.
+    fn verify_rows_count(
+        &self,
+        url: &str,
+        table_name: &str,
+        concurrency: i64,
+        repetitions: i64,
+        expected_rows: i64,
+        messages: &mut Messages,
+    ) {
+        let all_rows_selected_before_count = self.get_count_of_rows_selected_for_table(table_name);
+
+        self.issue_multi_query_requests(url, concurrency, repetitions, messages);
 
         let all_rows_selected_after_count = self.get_count_of_rows_selected_for_table(table_name);
-        eprintln!(
-            "rows selected - expected: {}, actual {}, equal: {}",
-            expected_rows,
-            all_rows_selected_after_count - all_rows_selected_before_count,
-            expected_rows == all_rows_selected_after_count - all_rows_selected_before_count
-        );
 
-        // todo - logic for whether the test passed/errored (verify_queries_count)
+        let rows = all_rows_selected_after_count - all_rows_selected_before_count;
+        match rows.cmp(&expected_rows) {
+            cmp::Ordering::Greater => messages.warning(format!("{} Executed rows read in the database instead of {} expected. This number is excessively high.", rows, expected_rows), "Extra Rows"),
+            cmp::Ordering::Less => messages.error(format!("Only {} executed rows read in the database out of roughly {} expected.", rows, expected_rows), "Too Few Rows"),
+            _ => {}
+        };
     }
 
     /// Issues `concurrency` requests to `url` exactly `repetition + 1` times
@@ -143,7 +124,8 @@ pub trait DatabaseVerifier {
         url: &str,
         concurrency: i64,
         repetitions: i64,
-    ) -> (u32, u32) {
+        messages: &mut Messages,
+    ) {
         let transaction_failures = Arc::new(AtomicU32::new(0));
         let transaction_successes = Arc::new(AtomicU32::new(0));
         for _ in 0..repetitions {
@@ -169,10 +151,21 @@ pub trait DatabaseVerifier {
             }
             pool.join();
         }
-        (
-            transaction_successes.load(Ordering::SeqCst),
-            transaction_failures.load(Ordering::SeqCst),
-        )
+
+        let failures = transaction_failures.load(Ordering::SeqCst);
+        if failures > 0 {
+            messages.error(
+                format!("Failed response(s) from {}: {}", url, failures),
+                "Failed Response",
+            );
+        }
+        let successes = transaction_successes.load(Ordering::SeqCst);
+        if successes as i64 != concurrency * repetitions {
+            messages.error(
+                format!("Unexpected response count from {}: {}", url, successes),
+                "Unexpected Responses",
+            );
+        }
     }
 
     fn get_count_of_all_queries_for_table(&self, table_name: &str) -> i64;

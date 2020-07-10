@@ -4,6 +4,7 @@ use crate::message::Messages;
 use crate::request::{get_response_body, get_response_headers, ContentType};
 use crate::test_type::query::Query;
 use crate::test_type::Verifier;
+use std::cmp;
 
 pub struct Updates {
     pub concurrency_levels: Vec<i64>,
@@ -49,7 +50,15 @@ impl Verifier for Updates {
                     concurrency,
                     repetitions,
                     expected_queries,
+                    &mut messages,
+                );
+                self.database_verifier.verify_rows_count(
+                    &format!("{}20", url),
+                    "world",
+                    concurrency,
+                    repetitions,
                     expected_rows,
+                    &mut messages,
                 );
                 self.verify_updates_count(
                     &format!("{}20", url),
@@ -59,7 +68,12 @@ impl Verifier for Updates {
                     expected_updates,
                     &mut messages,
                 );
-                self.verify_updates(url, concurrency, &mut messages)
+                self.verify_updates(
+                    &format!("{}20", url),
+                    concurrency,
+                    repetitions,
+                    &mut messages,
+                )
             }
         }
 
@@ -68,8 +82,8 @@ impl Verifier for Updates {
 }
 impl Updates {
     /// Counts all the updates that the datastore has on record, then performs
-    /// `concurrency` requests for `url` `repitions` times, then checks all the
-    /// updates that the datastore has on record again.
+    /// `concurrency` requests for `url` `repetitions` times, then checks all
+    /// the updates that the datastore has on record again.
     /// Reports error if the number of updated rows does not meet the threshold.
     fn verify_updates_count(
         &self,
@@ -77,49 +91,74 @@ impl Updates {
         table_name: &str,
         concurrency: i64,
         repetitions: i64,
-        expected_queries: i64,
-        _messages: &mut Messages,
+        expected_updates: i64,
+        messages: &mut Messages,
     ) {
         let all_rows_updated_before_count = self
             .database_verifier
             .get_count_of_rows_updated_for_table(table_name);
-        eprintln!(
-            "all updates count before: {}",
-            all_rows_updated_before_count
-        );
 
-        let (_successes, _failures) =
-            self.database_verifier
-                .issue_multi_query_requests(url, concurrency, repetitions);
+        self.database_verifier
+            .issue_multi_query_requests(url, concurrency, repetitions, messages);
 
         let all_rows_updated_after_count = self
             .database_verifier
             .get_count_of_rows_updated_for_table(table_name);
-        eprintln!("all updates count after: {}", all_rows_updated_after_count);
 
-        eprintln!(
-            "expected updates: {}, updates: {}, equal: {}",
-            expected_queries,
-            all_rows_updated_after_count - all_rows_updated_before_count,
-            expected_queries == (all_rows_updated_after_count - all_rows_updated_before_count)
-        );
+        let updated = all_rows_updated_after_count - all_rows_updated_before_count;
+        match updated.cmp(&expected_updates) {
+            cmp::Ordering::Greater => messages.warning(format!("{} executed rows updated in the database instead of {} expected. This number is excessively high.", updated, expected_updates), "Extra Rows"),
+            cmp::Ordering::Less => messages.error(format!("Only {} executed rows updated in the database out of roughly {} expected.", updated, expected_updates), "Too Few Rows"),
+            _ => {}
+        };
     }
 
     /// Queries all the data in the `World` table, runs an example update
     /// set of requests, then queries all the data in the `World` table again.
     /// Reports error if the number of updated rows does not meet the threshold.
-    fn verify_updates(&self, url: &str, concurrency: i64, _messages: &mut Messages) {
+    fn verify_updates(
+        &self,
+        url: &str,
+        concurrency: i64,
+        repetitions: i64,
+        messages: &mut Messages,
+    ) {
+        let expected_updates = concurrency * repetitions;
         // Note: we do this outside of `verify_updates_count` so we do not mess
         // up the counting. Down here, we no longer care about the query/select
         // counts, we only want to see that an appropriate number of updates
         // occurred on the underlying data.
 
-        // todo - capture the `World` table entirely for comparison later
+        let worlds_before = self.database_verifier.get_all_from_world_table().unwrap();
 
-        let (_successes, _failures) =
-            self.database_verifier
-                .issue_multi_query_requests(url, concurrency, 1);
+        self.database_verifier
+            .issue_multi_query_requests(url, concurrency, 1, messages);
 
-        // todo - capture the `World` table again and compare the values
+        let worlds_after = self.database_verifier.get_all_from_world_table().unwrap();
+
+        let mut updates = 0;
+        for index in 0..worlds_before.len() {
+            if worlds_before.get(&(index as i32)).is_some()
+                && worlds_after.get(&(index as i32)).is_some()
+                && worlds_before.get(&(index as i32)).unwrap()
+                    != worlds_after.get(&(index as i32)).unwrap()
+            {
+                updates += 1;
+            }
+        }
+
+        if updates == 0 {
+            messages.error("No items were updated in the database.", "No Updates");
+        } else if updates <= (expected_updates as f32 * 0.90) as i32 {
+            messages.error(
+                format!(
+                    "Only {} items were updated in the database out of roughly {} expected.",
+                    updates, expected_updates
+                ),
+                "Too Few Updates",
+            );
+        } else if updates <= (expected_updates as f32 * 0.95) as i32 {
+            messages.warning(format!("There may have been an error updating the database. Only {} items were updated in the database out of the roughly {} expected.", updates, expected_updates), "Too Few Updates");
+        }
     }
 }

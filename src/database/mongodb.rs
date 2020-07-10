@@ -1,7 +1,12 @@
 use crate::database::DatabaseVerifier;
+use std::collections::HashMap;
 
 pub struct Mongodb {}
 impl DatabaseVerifier for Mongodb {
+    fn get_all_from_world_table(&self) -> Option<HashMap<i32, i32>> {
+        None
+    }
+
     fn get_count_of_all_queries_for_table(&self, _table_name: &str) -> i64 {
         0
     }

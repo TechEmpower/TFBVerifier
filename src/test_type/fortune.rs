@@ -41,7 +41,15 @@ impl Verifier for Fortune {
             concurrency,
             repetitions,
             expected_queries,
+            &mut messages,
+        );
+        self.database_verifier.verify_rows_count(
+            url,
+            "fortune",
+            concurrency,
+            repetitions,
             expected_rows,
+            &mut messages,
         );
         self.verify_fortunes_are_dynamically_sized(&mut messages);
 
