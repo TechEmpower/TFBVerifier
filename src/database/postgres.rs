@@ -1,4 +1,4 @@
-use crate::database::DatabaseVerifier;
+use crate::database::DatabaseInterface;
 use postgres::{Client, NoTls};
 use std::collections::HashMap;
 
@@ -28,18 +28,30 @@ impl Postgres {
         0
     }
 }
-impl DatabaseVerifier for Postgres {
-    fn get_all_from_world_table(&self) -> Option<HashMap<i32, i32>> {
-        let mut client = self.get_client().unwrap();
-
-        if let Ok(rows) = client.query("SELECT * FROM world", &[]) {
-            let mut to_ret = HashMap::new();
-            for row in rows {
-                to_ret.insert(row.get("id"), row.get("randomnumber"));
+impl DatabaseInterface for Postgres {
+    fn get_all_from_world_table(&self) -> HashMap<i32, i32> {
+        let mut to_ret = HashMap::new();
+        if let Some(mut client) = self.get_client() {
+            if let Ok(rows) = client.query("SELECT * FROM world", &[]) {
+                for row in rows {
+                    to_ret.insert(row.get("id"), row.get("randomnumber"));
+                }
             }
-            Some(to_ret)
-        } else {
-            None
+        }
+
+        to_ret
+    }
+
+    fn insert_one_thousand_fortunes(&self) {
+        if let Some(mut client) = self.get_client() {
+            let mut update = String::new();
+            for i in 0..1_000 {
+                update.push_str(&format!(
+                    "INSERT INTO fortune(id,message) VALUES ({},'フレームワークのベンチマーク');",
+                    i + 13
+                ));
+            }
+            client.batch_execute(update.as_str()).unwrap();
         }
     }
 

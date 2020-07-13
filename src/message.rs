@@ -8,18 +8,21 @@
 use colored::Colorize;
 use std::collections::HashMap;
 
+#[derive(Clone)]
 pub struct Warning {
     pub body: String,
     pub url: String,
     pub headers: String,
     pub message: String,
 }
+#[derive(Clone)]
 pub struct Error {
     pub body: String,
     pub url: String,
     pub headers: String,
     pub message: String,
 }
+#[derive(Clone)]
 pub struct Messages {
     pub warnings: Vec<Warning>,
     pub errors: Vec<Error>,

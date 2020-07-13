@@ -29,7 +29,7 @@ pub enum Database {
 }
 impl Database {
     /// Gets a `Box`ed `DatabaseVerifier` for the given `database_name`.
-    pub fn get(database_name: &str) -> VerifierResult<Box<dyn DatabaseVerifier>> {
+    pub fn get(database_name: &str) -> VerifierResult<Box<dyn DatabaseInterface>> {
         if let Ok(database_type) = Database::from_str(&database_name.to_lowercase()) {
             return match database_type {
                 Database::Mysql => Ok(Box::new(Mysql {})),
@@ -47,9 +47,13 @@ impl Database {
     }
 }
 
-pub trait DatabaseVerifier {
-    fn get_all_from_world_table(&self) -> Option<HashMap<i32, i32>>;
-
+/// Trait for interfacing with any type of database.
+///
+/// Generally, this is the place where new functions need to be defined in
+/// order to provide additional test type implementations. Not all underlying
+/// database types will have analogues for every type of action that may be
+/// required.
+pub trait DatabaseInterface {
     /// Checks that the number queries issued by the application after
     /// requesting `url` a known number of times (given by
     /// `concurrency` * `repetitions`) are equal.
@@ -113,12 +117,10 @@ pub trait DatabaseVerifier {
     ///
     /// For example, on a dual-core machine, this function will spawn 2 threads
     /// each of which will make a request to `url`, increment an atomic counter
-    /// of successful or failured requests, decrement the shared remaining
+    /// of successful or failed requests, decrement the shared remaining
     /// requests atomic counter, and loop until that counter has run out. At
     /// the end of this example, it is expected that each thread will have run
     /// 256 times (on average).
-    ///
-    /// Returns: `(success_count, failed_count)`
     fn issue_multi_query_requests(
         &self,
         url: &str,
@@ -168,10 +170,33 @@ pub trait DatabaseVerifier {
         }
     }
 
+    /// Gets all of the `world` table (or analogue) entries from the underlying
+    /// database and returns them as a map from `id` to `randomnumber`.
+    fn get_all_from_world_table(&self) -> HashMap<i32, i32>;
+
+    /// Inserts 1,000 static fortunes into the `fortune` table (or analogue).
+    ///
+    /// Note: while the verification process and all other aspects of TFB can
+    /// generally be expected to be agnostic of one another, this is one case
+    /// where some overlap is required. This function will insert 1,000 rows
+    /// into the `fortune` table and there is no expectation that those entries
+    /// will be removed. Rather, there is domain knowledge of the running
+    /// toolset required to understand why - the database is a docker container
+    /// running an image which *does not persist* its underlying data store to
+    /// disk.
+    ///
+    /// Put bluntly, this action is safe because the *next* opportunity
+    /// for something to read the unaltered fortunes table **must** restart the
+    /// database container.
+    fn insert_one_thousand_fortunes(&self);
+
+    /// Gets the count of all queries run against the given `table_name`.
     fn get_count_of_all_queries_for_table(&self, table_name: &str) -> i64;
 
+    /// Gets the count of all rows selected for the given `table_name`.
     fn get_count_of_rows_selected_for_table(&self, table_name: &str) -> i64;
 
+    /// Gets the count of all rows updated for the given `table_name`.
     fn get_count_of_rows_updated_for_table(&self, table_name: &str) -> i64;
 }
 

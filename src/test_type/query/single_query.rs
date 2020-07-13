@@ -1,4 +1,4 @@
-use crate::database::DatabaseVerifier;
+use crate::database::DatabaseInterface;
 use crate::error::VerifierResult;
 use crate::message::Messages;
 use crate::request::{get_response_body, get_response_headers, ContentType};
@@ -8,7 +8,7 @@ use serde_json::Value;
 
 pub struct SingleQuery {
     pub concurrency_levels: Vec<i64>,
-    pub database_verifier: Box<dyn DatabaseVerifier>,
+    pub database_verifier: Box<dyn DatabaseInterface>,
 }
 impl Query for SingleQuery {}
 impl Verifier for SingleQuery {

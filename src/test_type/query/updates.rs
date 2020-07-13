@@ -1,4 +1,4 @@
-use crate::database::DatabaseVerifier;
+use crate::database::DatabaseInterface;
 use crate::error::VerifierResult;
 use crate::message::Messages;
 use crate::request::{get_response_body, get_response_headers, ContentType};
@@ -8,7 +8,7 @@ use std::cmp;
 
 pub struct Updates {
     pub concurrency_levels: Vec<i64>,
-    pub database_verifier: Box<dyn DatabaseVerifier>,
+    pub database_verifier: Box<dyn DatabaseInterface>,
 }
 impl Query for Updates {}
 impl Verifier for Updates {
@@ -129,12 +129,12 @@ impl Updates {
         // counts, we only want to see that an appropriate number of updates
         // occurred on the underlying data.
 
-        let worlds_before = self.database_verifier.get_all_from_world_table().unwrap();
+        let worlds_before = self.database_verifier.get_all_from_world_table();
 
         self.database_verifier
             .issue_multi_query_requests(url, concurrency, 1, messages);
 
-        let worlds_after = self.database_verifier.get_all_from_world_table().unwrap();
+        let worlds_after = self.database_verifier.get_all_from_world_table();
 
         let mut updates = 0;
         for index in 0..worlds_before.len() {

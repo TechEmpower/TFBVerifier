@@ -1,11 +1,13 @@
-use crate::database::DatabaseVerifier;
+use crate::database::DatabaseInterface;
 use std::collections::HashMap;
 
 pub struct Mysql {}
-impl DatabaseVerifier for Mysql {
-    fn get_all_from_world_table(&self) -> Option<HashMap<i32, i32>> {
-        None
+impl DatabaseInterface for Mysql {
+    fn get_all_from_world_table(&self) -> HashMap<i32, i32> {
+        HashMap::default()
     }
+
+    fn insert_one_thousand_fortunes(&self) {}
 
     fn get_count_of_all_queries_for_table(&self, _table_name: &str) -> i64 {
         0
