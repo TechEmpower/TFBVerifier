@@ -32,7 +32,11 @@ impl Verifier for Fortune {
         self.verify_headers(&response_headers, &url, ContentType::Html, &mut messages);
 
         let response_body = get_response_body(&url, &mut messages);
-        messages.body(&response_body);
+        let mut accumulator = String::new();
+        for line in response_body.lines() {
+            accumulator.push_str(line);
+        }
+        messages.body(&accumulator);
 
         let verified = self.verify_fortune(&response_body, &mut messages);
         self.database_verifier.verify_queries_count(
@@ -52,10 +56,12 @@ impl Verifier for Fortune {
             &mut messages,
         );
         if verified {
-            // Note: we clone messages here because we are going to set the body to
-            // the one with lots more fortunes; use that body only in this function.
-            self.verify_fortunes_are_dynamically_sized(&url, &mut messages.clone());
+            self.verify_fortunes_are_dynamically_sized(&url, &mut messages);
         }
+        // Note: we call this again because internally `verify_fortunes_are...`
+        // will set the body to its extra-large variant and we don't want to
+        // output that.
+        messages.body(&response_body);
 
         Ok(messages)
     }
@@ -104,19 +110,28 @@ impl Fortune {
                 i + 13
             ));
         }
-        // more_fortunes.push_str("</table></body></html>");
+        more_fortunes.push_str("</table></body></html>");
+
         let response_body = get_response_body(&url, messages);
-        messages.body(&response_body);
+        let mut accumulator = String::new();
+        for line in response_body.lines() {
+            accumulator.push_str(line);
+        }
+        // truncate the single-line for rendering
+        accumulator = accumulator[..500].to_string();
+        accumulator.push_str("...");
+        messages.body(&accumulator);
 
         let fortunes = normalize_html(&response_body);
 
         if fortunes.to_lowercase() != more_fortunes.to_lowercase() {
-            messages.error("Fortunes not dynamically sized.", "Non-dynamic Fortune");
-
-            eprintln!(
-                "fortunes: {}, more_fortunes: {}",
-                fortunes.len(),
-                more_fortunes.len()
+            messages.error(
+                format!(
+                    "Fortunes not dynamically sized. Expected length: {}; actual length: {}",
+                    more_fortunes.len(),
+                    fortunes.len()
+                ),
+                "Non-dynamic Fortune",
             );
         }
     }
