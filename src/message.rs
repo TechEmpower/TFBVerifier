@@ -98,7 +98,8 @@ impl Messages {
     pub fn output_results(&self) {
         if self.errors.is_empty() && self.warnings.is_empty() {
             println!("   {}", "PASS".green());
-        } else if !self.warnings.is_empty() {
+        }
+        if !self.warnings.is_empty() {
             println!("   {}", "WARN".yellow());
             for warning in &self.warnings {
                 println!("     {}", warning.message);
@@ -113,7 +114,8 @@ impl Messages {
                     println!("{}", warning.body);
                 }
             }
-        } else if !self.errors.is_empty() {
+        }
+        if !self.errors.is_empty() {
             println!("   {}", "ERROR".red());
             for error in &self.errors {
                 println!("     {}", error.message);

@@ -73,10 +73,18 @@ pub trait DatabaseInterface {
         let all_queries_after_count = self.get_count_of_all_queries_for_table(table_name);
 
         let queries = all_queries_after_count - all_queries_before_count;
-        match queries.cmp(&expected_queries) {
-            cmp::Ordering::Greater => messages.warning(format!("{} Executed queries in the database instead of {} expected. This number is excessively high.", queries, expected_queries), "Extra Queries"),
-            cmp::Ordering::Less => messages.error(format!("Only {} executed queries in the database out of roughly {} expected.", queries, expected_queries), "Too Few Queries"),
-            _ => {}
+        // Note: Some database implementations are less accurate (though still
+        // precise) than others, and sometimes over-report rows updated. We do
+        // not warn because it would just be noisy over something out of the
+        // implementer's control.
+        if let cmp::Ordering::Less = queries.cmp(&expected_queries) {
+            messages.error(
+                format!(
+                    "Only {} executed queries in the database out of roughly {} expected.",
+                    queries, expected_queries
+                ),
+                "Too Few Queries",
+            )
         };
     }
 
@@ -99,10 +107,18 @@ pub trait DatabaseInterface {
         let all_rows_selected_after_count = self.get_count_of_rows_selected_for_table(table_name);
 
         let rows = all_rows_selected_after_count - all_rows_selected_before_count;
-        match rows.cmp(&expected_rows) {
-            cmp::Ordering::Greater => messages.warning(format!("{} Executed rows read in the database instead of {} expected. This number is excessively high.", rows, expected_rows), "Extra Rows"),
-            cmp::Ordering::Less => messages.error(format!("Only {} executed rows read in the database out of roughly {} expected.", rows, expected_rows), "Too Few Rows"),
-            _ => {}
+        // Note: Some database implementations are less accurate (though still
+        // precise) than others, and sometimes over-report rows updated. We do
+        // not warn because it would just be noisy over something out of the
+        // implementer's control.
+        if let cmp::Ordering::Less = rows.cmp(&expected_rows) {
+            messages.error(
+                format!(
+                    "Only {} executed rows read in the database out of roughly {} expected.",
+                    rows, expected_rows
+                ),
+                "Too Few Rows",
+            )
         };
     }
 

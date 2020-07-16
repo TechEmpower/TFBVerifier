@@ -106,10 +106,18 @@ impl Updates {
             .get_count_of_rows_updated_for_table(table_name);
 
         let updated = all_rows_updated_after_count - all_rows_updated_before_count;
-        match updated.cmp(&expected_updates) {
-            cmp::Ordering::Greater => messages.warning(format!("{} executed rows updated in the database instead of {} expected. This number is excessively high.", updated, expected_updates), "Extra Rows"),
-            cmp::Ordering::Less => messages.error(format!("Only {} executed rows updated in the database out of roughly {} expected.", updated, expected_updates), "Too Few Rows"),
-            _ => {}
+        // Note: Some database implementations are less accurate (though still
+        // precise) than others, and sometimes over-report rows updated. We do
+        // not warn because it would just be noisy over something out of the
+        // implementer's control.
+        if let cmp::Ordering::Less = updated.cmp(&expected_updates) {
+            messages.error(
+                format!(
+                    "Only {} executed rows updated in the database out of roughly {} expected.",
+                    updated, expected_updates
+                ),
+                "Too Few Rows",
+            )
         };
     }
 
