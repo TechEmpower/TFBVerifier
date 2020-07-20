@@ -82,11 +82,18 @@ impl DatabaseInterface for Mysql {
     }
 
     fn get_count_of_all_queries_for_table(&self, _table_name: &str) -> i64 {
-        self.run_counting_query(r"SELECT variable_name, variable_value from PERFORMANCE_SCHEMA.SESSION_STATUS where Variable_name = 'Innodb_rows_read'")
+        let selects =
+            self.run_counting_query(r"Show global status where Variable_name = 'Com_select'");
+        let updates =
+            self.run_counting_query(r"Show global status where Variable_name = 'Com_update'");
+
+        // Note: this is given the 1.5% margin just as in
+        // `get_count_of_rows_updated_for_table`.
+        (updates as f64 * 1.015) as i64 + selects
     }
 
     fn get_count_of_rows_selected_for_table(&self, _table_name: &str) -> i64 {
-        let rows_read = self.get_count_of_all_queries_for_table("");
+        let rows_read = self.run_counting_query(r"SELECT variable_name, variable_value from PERFORMANCE_SCHEMA.SESSION_STATUS where Variable_name = 'Innodb_rows_read'");
         // Note: we explicitly do not call `get_count_of_rows_updated_for_table`
         // here because we are going to subtract the rows updated from the rows
         // read. The first value is both accurate and precise; the second is
