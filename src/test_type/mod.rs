@@ -56,26 +56,31 @@ impl TestType {
         database_name: Option<String>,
         concurrency_levels: Vec<i64>,
     ) -> VerifierResult<Box<dyn Verifier>> {
+        let database = if let Some(name) = database_name {
+            Some(Database::get(&name)?)
+        } else {
+            None
+        };
         match self {
             TestType::Json => Ok(Box::new(Json {})),
             TestType::SingleQuery => Ok(Box::new(SingleQuery {
-                database_verifier: Database::get(&database_name.unwrap())?,
+                database_verifier: database.unwrap(),
                 concurrency_levels,
             })),
             TestType::MultiQuery => Ok(Box::new(MultiQuery {
-                database_verifier: Database::get(&database_name.unwrap())?,
+                database_verifier: database.unwrap(),
                 concurrency_levels,
             })),
             TestType::CachedQuery => Ok(Box::new(CachedQuery {
-                database_verifier: Database::get(&database_name.unwrap())?,
+                database_verifier: database.unwrap(),
                 concurrency_levels,
             })),
             TestType::Fortune => Ok(Box::new(Fortune {
-                database_verifier: Database::get(&database_name.unwrap())?,
+                database_verifier: database.unwrap(),
                 concurrency_levels,
             })),
             TestType::Update => Ok(Box::new(Updates {
-                database_verifier: Database::get(&database_name.unwrap())?,
+                database_verifier: database.unwrap(),
                 concurrency_levels,
             })),
             TestType::Plaintext => Ok(Box::new(Plaintext {})),

@@ -4,6 +4,7 @@ use mysql::prelude::Queryable;
 use mysql::{Params, Pool, PooledConn};
 use std::collections::HashMap;
 
+#[derive(Debug)]
 pub struct Mysql {}
 impl Mysql {
     fn get_client(&self) -> Option<PooledConn> {

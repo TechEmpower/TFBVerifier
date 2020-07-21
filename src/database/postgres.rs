@@ -2,6 +2,7 @@ use crate::database::DatabaseInterface;
 use postgres::{Client, NoTls};
 use std::collections::HashMap;
 
+#[derive(Debug)]
 pub struct Postgres {}
 impl Postgres {
     fn get_client(&self) -> Option<Client> {
