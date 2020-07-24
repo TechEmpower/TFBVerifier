@@ -24,9 +24,6 @@ pub enum VerifierError {
     #[error("Strum parse error occurred")]
     StrumParseError(#[from] strum::ParseError),
 
-    #[error("Invalid test type error: {0}")]
-    InvalidTestType(String),
-
     #[error("Invalid database type error: {0}")]
     InvalidDatabaseType(String),
 

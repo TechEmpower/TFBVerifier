@@ -2,9 +2,9 @@ pub mod fortune;
 pub mod json;
 pub mod plaintext;
 pub mod query;
+mod unknown;
 
 use crate::database::Database;
-use crate::error::VerifierError::InvalidTestType;
 use crate::error::VerifierResult;
 use crate::message::Messages;
 use crate::request::{get_response_headers, ContentType};
@@ -15,6 +15,7 @@ use crate::test_type::query::cached_query::CachedQuery;
 use crate::test_type::query::multi_query::MultiQuery;
 use crate::test_type::query::single_query::SingleQuery;
 use crate::test_type::query::updates::Updates;
+use crate::test_type::unknown::Unknown;
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::thread::sleep;
@@ -34,20 +35,16 @@ pub enum TestType {
     Fortune,
     Update,
     Plaintext,
+    Unknown(String),
 }
 impl TestType {
     /// Helper function for getting a `TestType` from `test_type_name`.
     pub fn get(test_type_name: &str) -> VerifierResult<TestType> {
         if let Ok(test_type) = TestType::from_str(&test_type_name.to_lowercase()) {
-            return Ok(test_type);
+            Ok(test_type)
         } else {
-            let mut messages = Messages::default();
-            messages.error(
-                format!("Invalid test type: {}", test_type_name),
-                "Invalid Test Type",
-            );
+            Ok(TestType::Unknown(test_type_name.to_string()))
         }
-        Err(InvalidTestType(test_type_name.to_string()))
     }
 
     /// Gets a verifier for the given `test_type_name`.
@@ -84,6 +81,9 @@ impl TestType {
                 concurrency_levels,
             })),
             TestType::Plaintext => Ok(Box::new(Plaintext {})),
+            TestType::Unknown(test_type) => Ok(Box::new(Unknown {
+                test_type: test_type.clone(),
+            })),
         }
     }
 }
