@@ -1,7 +1,7 @@
 use crate::error::VerifierError::{Non200Response, RequestError};
 use crate::error::VerifierResult;
 use crate::logger::{log, LogOptions};
-use crate::message::Messages;
+use crate::verification::Messages;
 use colored::Colorize;
 use curl::easy::{Easy, Easy2, Handler, WriteError};
 use std::collections::HashMap;

@@ -10,7 +10,7 @@ use crate::database::mysql::Mysql;
 use crate::database::postgres::Postgres;
 use crate::error::VerifierError::InvalidDatabaseType;
 use crate::error::VerifierResult;
-use crate::message::Messages;
+use crate::verification::Messages;
 use crate::request::request;
 use std::cmp;
 use std::collections::HashMap;

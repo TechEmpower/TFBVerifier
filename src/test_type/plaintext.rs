@@ -1,14 +1,22 @@
+use crate::benchmark::BenchmarkCommands;
 use crate::error::VerifierResult;
-use crate::message::Messages;
 use crate::request::{get_response_body, get_response_headers, ContentType};
 use crate::test_type::Executor;
+use crate::verification::Messages;
 
-pub struct Plaintext {}
+pub struct Plaintext {
+    pub concurrency_levels: Vec<i64>,
+    pub pipeline_concurrency_levels: Vec<i64>,
+}
 impl Executor for Plaintext {
-    fn benchmark(&self, _url: &str) -> VerifierResult<()> {
+    fn retrieve_benchmark_commands(&self, _url: &str) -> VerifierResult<BenchmarkCommands> {
         // todo
 
-        Ok(())
+        Ok(BenchmarkCommands {
+            primer_command: "".to_string(),
+            warmup_command: "".to_string(),
+            benchmark_commands: vec![],
+        })
     }
 
     fn verify(&self, url: &str) -> VerifierResult<Messages> {
@@ -58,12 +66,15 @@ impl Plaintext {
 
 #[cfg(test)]
 mod tests {
-    use crate::message::Messages;
     use crate::test_type::plaintext::Plaintext;
+    use crate::verification::Messages;
 
     #[test]
     fn it_should_succeed_on_correct_body() {
-        let plaintext = Plaintext {};
+        let plaintext = Plaintext {
+            concurrency_levels: vec![16, 32, 64, 128, 256, 512],
+            pipeline_concurrency_levels: vec![16, 32, 64, 128, 256, 512],
+        };
         let mut messages = Messages::default();
         plaintext.verify_plaintext("Hello, World!", &mut messages);
         assert!(messages.errors.is_empty());
@@ -72,7 +83,10 @@ mod tests {
 
     #[test]
     fn it_should_fail_on_incorrect_message() {
-        let plaintext = Plaintext {};
+        let plaintext = Plaintext {
+            concurrency_levels: vec![16, 32, 64, 128, 256, 512],
+            pipeline_concurrency_levels: vec![16, 32, 64, 128, 256, 512],
+        };
         let mut messages = Messages::default();
         plaintext.verify_plaintext("World, Hello!", &mut messages);
         let mut found = false;

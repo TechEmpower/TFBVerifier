@@ -1,16 +1,15 @@
+use crate::benchmark::BenchmarkCommands;
 use crate::error::VerifierResult;
-use crate::message::Messages;
 use crate::request::{get_response_body, get_response_headers, ContentType};
 use crate::test_type::Executor;
+use crate::verification::Messages;
 
 pub struct Unknown {
     pub(crate) test_type: String,
 }
 impl Executor for Unknown {
-    fn benchmark(&self, _url: &str) -> VerifierResult<()> {
-        // todo
-
-        Ok(())
+    fn retrieve_benchmark_commands(&self, _url: &str) -> VerifierResult<BenchmarkCommands> {
+        unimplemented!();
     }
 
     fn verify(&self, url: &str) -> VerifierResult<Messages> {

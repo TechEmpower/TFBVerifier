@@ -1,5 +1,5 @@
-//! The `Message` module is the mechanism by which `TFBVerifier` communicates
-//! data to the `TFBToolset`.
+//! The `Verification` module is the mechanism by which `TFBVerifier` communicates
+//! verification data to the `TFBToolset`.
 //! By default, nearly anything printing to stdout/stderr will simply be
 //! consumed by the toolset and then printed to stdout/stderr. However, in
 //! order to pass data about the state of the verification, we serialize
@@ -104,7 +104,7 @@ impl Messages {
     }
 
     /// Prints out the results and if there are no errors, sends the passed message.
-    pub fn output_results(&self) {
+    pub fn output_verification_results(&self) {
         if self.errors.is_empty() && self.warnings.is_empty() {
             println!("   {}", "PASS".green());
         }
@@ -195,7 +195,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::message::{send_error, send_warning};
+    use crate::verification::{send_error, send_warning};
     use serde_json::Value;
 
     #[test]

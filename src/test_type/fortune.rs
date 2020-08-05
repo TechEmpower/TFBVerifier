@@ -1,8 +1,9 @@
+use crate::benchmark::BenchmarkCommands;
 use crate::database::DatabaseInterface;
 use crate::error::VerifierResult;
-use crate::message::Messages;
 use crate::request::{get_response_body, get_response_headers, ContentType};
 use crate::test_type::Executor;
+use crate::verification::Messages;
 use html5ever::tendril::*;
 use html5ever::tokenizer::Token::{CharacterTokens, DoctypeToken, TagToken};
 use html5ever::tokenizer::{
@@ -13,13 +14,18 @@ const FORTUNES: &str = "<!doctype html><html><head><title>Fortunes</title></head
 
 pub struct Fortune {
     pub concurrency_levels: Vec<i64>,
+    pub pipeline_concurrency_levels: Vec<i64>,
     pub database_verifier: Box<dyn DatabaseInterface>,
 }
 impl Executor for Fortune {
-    fn benchmark(&self, _url: &str) -> VerifierResult<()> {
+    fn retrieve_benchmark_commands(&self, _url: &str) -> VerifierResult<BenchmarkCommands> {
         // todo
 
-        Ok(())
+        Ok(BenchmarkCommands {
+            primer_command: "".to_string(),
+            warmup_command: "".to_string(),
+            benchmark_commands: vec![],
+        })
     }
 
     /// Parses the given HTML string and asks the FortuneHTMLParser whether
@@ -274,8 +280,8 @@ fn normalize_text(input: &str) -> String {
 #[cfg(test)]
 mod tests {
     use crate::database::mysql::Mysql;
-    use crate::message::Messages;
     use crate::test_type::fortune::{normalize_text, Fortune, FORTUNES};
+    use crate::verification::Messages;
 
     #[test]
     fn it_should_pass_with_identity_fortunes() {
@@ -283,6 +289,7 @@ mod tests {
         let valid = FORTUNES;
         let fortune = Fortune {
             concurrency_levels: vec![16, 32, 64, 128, 256, 512],
+            pipeline_concurrency_levels: vec![16, 32, 64, 128, 256, 512],
             database_verifier: Box::new(Mysql {}),
         };
 

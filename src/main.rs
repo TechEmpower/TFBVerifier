@@ -1,15 +1,17 @@
+mod benchmark;
 mod database;
 mod error;
 mod logger;
-mod message;
 mod mode;
 mod request;
 mod test_type;
+mod verification;
 
 extern crate html5ever;
 extern crate strum;
 extern crate threadpool;
 
+use crate::benchmark::send_benchmark_commands;
 use crate::error::VerifierResult;
 use crate::logger::{log, LogOptions};
 use crate::mode::Mode;
@@ -24,6 +26,7 @@ fn main() -> VerifierResult<()> {
     let endpoint = env::var("ENDPOINT")?;
     let test_type_name = env::var("TEST_TYPE")?;
     let concurrency_levels = env::var("CONCURRENCY_LEVELS")?;
+    let pipeline_concurrency_levels = env::var("PIPELINE_CONCURRENCY_LEVELS")?;
     let database = match env::var("DATABASE") {
         Ok(database) => Some(database),
         _ => None,
@@ -38,11 +41,16 @@ fn main() -> VerifierResult<()> {
             .split(',')
             .map(|item| i64::from_str(item).unwrap())
             .collect(),
+        pipeline_concurrency_levels
+            .split(',')
+            .map(|item| i64::from_str(item).unwrap())
+            .collect(),
     )?;
 
     match Mode::get(&mode_name)? {
         Mode::Benchmark => {
-            // todo
+            let benchmark = executor.retrieve_benchmark_commands(&url)?;
+            send_benchmark_commands(benchmark);
         }
         Mode::Verify => {
             log(
@@ -55,7 +63,7 @@ fn main() -> VerifierResult<()> {
             );
 
             let messages = executor.verify(&url)?;
-            messages.output_results();
+            messages.output_verification_results();
         }
         Mode::Unknown(_mode) => {
             // todo - should probably output *something*

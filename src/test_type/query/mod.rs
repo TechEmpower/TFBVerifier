@@ -3,7 +3,7 @@ pub(crate) mod multi_query;
 pub(crate) mod single_query;
 pub(crate) mod updates;
 
-use crate::message::Messages;
+use crate::verification::Messages;
 use serde_json::{Map, Value};
 use std::str::FromStr;
 
@@ -205,7 +205,7 @@ mod tests {
     // verify_random_number_object
     //
 
-    use crate::message::Messages;
+    use crate::verification::Messages;
     use crate::test_type::query::{Query, _QueryTest};
     use serde_json::Value;
 

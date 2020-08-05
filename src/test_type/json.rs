@@ -1,16 +1,31 @@
+use crate::benchmark::BenchmarkCommands;
 use crate::error::VerifierResult;
-use crate::message::Messages;
 use crate::request::{get_response_body, get_response_headers, ContentType};
 use crate::test_type::Executor;
+use crate::verification::Messages;
 use serde_json::Value;
+use std::cmp::min;
 
-/// Test
-pub struct Json {}
+pub struct Json {
+    pub concurrency_levels: Vec<i64>,
+    pub pipeline_concurrency_levels: Vec<i64>,
+}
 impl Executor for Json {
-    fn benchmark(&self, _url: &str) -> VerifierResult<()> {
-        // todo
+    fn retrieve_benchmark_commands(&self, url: &str) -> VerifierResult<BenchmarkCommands> {
+        let accept = "application/json,text/html;q=0.9,application/xhtml+xml;q=0.9,application/xml;q=0.8,*/*;q=0.7";
 
-        Ok(())
+        Ok(BenchmarkCommands {
+            primer_command: format!("wrk -H 'Host: tfb-server' -H 'Accept: {}' -H 'Connection: keep-alive' --latency -d 5 -c 8 --timeout 8 -t 8 {}", accept, url),
+            warmup_command: format!("wrk -H 'Host: tfb-server' -H 'Accept: {}' -H 'Connection: keep-alive' --latency -d 15 -c 512 --timeout 8 -t {} {}", accept, num_cpus::get(), url),
+            benchmark_commands: vec![
+                format!("wrk -H 'Host: tfb-server' -H 'Accept: {}' -H 'Connection: keep-alive' --latency -d 15 -c 16 --timeout 8 -t {} {}", accept, min(16, num_cpus::get()), url),
+                format!("wrk -H 'Host: tfb-server' -H 'Accept: {}' -H 'Connection: keep-alive' --latency -d 15 -c 32 --timeout 8 -t {} {}", accept, min(32, num_cpus::get()), url),
+                format!("wrk -H 'Host: tfb-server' -H 'Accept: {}' -H 'Connection: keep-alive' --latency -d 15 -c 64 --timeout 8 -t {} {}", accept, min(64, num_cpus::get()), url),
+                format!("wrk -H 'Host: tfb-server' -H 'Accept: {}' -H 'Connection: keep-alive' --latency -d 15 -c 128 --timeout 8 -t {} {}", accept, min(128, num_cpus::get()), url),
+                format!("wrk -H 'Host: tfb-server' -H 'Accept: {}' -H 'Connection: keep-alive' --latency -d 15 -c 256 --timeout 8 -t {} {}", accept, min(256, num_cpus::get()), url),
+                format!("wrk -H 'Host: tfb-server' -H 'Accept: {}' -H 'Connection: keep-alive' --latency -d 15 -c 512 --timeout 8 -t {} {}", accept, min(512, num_cpus::get()), url),
+            ],
+        })
     }
 
     fn verify(&self, url: &str) -> VerifierResult<Messages> {
@@ -88,12 +103,15 @@ impl Json {
 
 #[cfg(test)]
 mod tests {
-    use crate::message::Messages;
     use crate::test_type::json::Json;
+    use crate::verification::Messages;
 
     #[test]
     fn it_should_succeed_on_correct_body() {
-        let json = Json {};
+        let json = Json {
+            concurrency_levels: vec![16, 32, 64, 128, 256, 512],
+            pipeline_concurrency_levels: vec![16, 32, 64, 128, 256, 512],
+        };
         let mut messages = Messages::default();
         json.verify_json("{\"message\":\"Hello, World!\"}", &mut messages);
         assert!(messages.errors.is_empty());
@@ -102,7 +120,10 @@ mod tests {
 
     #[test]
     fn it_should_error_on_valid_json_but_bad_message() {
-        let json = Json {};
+        let json = Json {
+            concurrency_levels: vec![16, 32, 64, 128, 256, 512],
+            pipeline_concurrency_levels: vec![16, 32, 64, 128, 256, 512],
+        };
         let mut messages = Messages::default();
         json.verify_json("{\"message\":{}}", &mut messages);
         let mut found = false;
@@ -120,7 +141,10 @@ mod tests {
 
     #[test]
     fn it_should_error_on_invalid_json_hello_world_object() {
-        let json = Json {};
+        let json = Json {
+            concurrency_levels: vec![16, 32, 64, 128, 256, 512],
+            pipeline_concurrency_levels: vec![16, 32, 64, 128, 256, 512],
+        };
         let mut messages = Messages::default();
         json.verify_json("{\"message\":", &mut messages);
         assert_eq!(messages.errors.len(), 1);
@@ -134,7 +158,10 @@ mod tests {
 
     #[test]
     fn it_should_warn_on_additional_keys() {
-        let json = Json {};
+        let json = Json {
+            concurrency_levels: vec![16, 32, 64, 128, 256, 512],
+            pipeline_concurrency_levels: vec![16, 32, 64, 128, 256, 512],
+        };
         let mut messages = Messages::default();
         json.verify_json(
             "{\"message\":\"Hello, World!\",\"new_key\":\"extra keys are bad\"}",
@@ -152,7 +179,10 @@ mod tests {
 
     #[test]
     fn it_should_warn_on_additional_bytes() {
-        let json = Json {};
+        let json = Json {
+            concurrency_levels: vec![16, 32, 64, 128, 256, 512],
+            pipeline_concurrency_levels: vec![16, 32, 64, 128, 256, 512],
+        };
         let mut messages = Messages::default();
         json.verify_json(
             "{\"message\":\"Hello, World!\",\"new_key\":\"so many bytes!!!\"}",
@@ -173,7 +203,10 @@ mod tests {
 
     #[test]
     fn it_should_error_on_missing_message_key() {
-        let json = Json {};
+        let json = Json {
+            concurrency_levels: vec![16, 32, 64, 128, 256, 512],
+            pipeline_concurrency_levels: vec![16, 32, 64, 128, 256, 512],
+        };
         let mut messages = Messages::default();
         json.verify_json("{\"not_message\":\"Hello, World!\"}", &mut messages);
         assert_eq!(messages.errors.len(), 1);
@@ -187,7 +220,10 @@ mod tests {
 
     #[test]
     fn it_should_error_on_invalid_hello_world_value() {
-        let json = Json {};
+        let json = Json {
+            concurrency_levels: vec![16, 32, 64, 128, 256, 512],
+            pipeline_concurrency_levels: vec![16, 32, 64, 128, 256, 512],
+        };
         let mut messages = Messages::default();
         json.verify_json("{\"message\":\"Hello, Moto!\"}", &mut messages);
         assert_eq!(messages.errors.len(), 1);

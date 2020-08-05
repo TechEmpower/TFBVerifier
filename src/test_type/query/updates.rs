@@ -1,21 +1,27 @@
+use crate::benchmark::BenchmarkCommands;
 use crate::database::DatabaseInterface;
 use crate::error::VerifierResult;
-use crate::message::Messages;
 use crate::request::{get_response_body, get_response_headers, ContentType};
 use crate::test_type::query::Query;
 use crate::test_type::Executor;
+use crate::verification::Messages;
 use std::cmp;
 
 pub struct Updates {
     pub concurrency_levels: Vec<i64>,
+    pub pipeline_concurrency_levels: Vec<i64>,
     pub database_verifier: Box<dyn DatabaseInterface>,
 }
 impl Query for Updates {}
 impl Executor for Updates {
-    fn benchmark(&self, _url: &str) -> VerifierResult<()> {
+    fn retrieve_benchmark_commands(&self, _url: &str) -> VerifierResult<BenchmarkCommands> {
         // todo
 
-        Ok(())
+        Ok(BenchmarkCommands {
+            primer_command: "".to_string(),
+            warmup_command: "".to_string(),
+            benchmark_commands: vec![],
+        })
     }
 
     fn verify(&self, url: &str) -> VerifierResult<Messages> {
