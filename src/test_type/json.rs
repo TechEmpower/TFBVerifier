@@ -1,11 +1,18 @@
 use crate::error::VerifierResult;
 use crate::message::Messages;
 use crate::request::{get_response_body, get_response_headers, ContentType};
-use crate::test_type::Verifier;
+use crate::test_type::Executor;
 use serde_json::Value;
 
+/// Test
 pub struct Json {}
-impl Verifier for Json {
+impl Executor for Json {
+    fn benchmark(&self, _url: &str) -> VerifierResult<()> {
+        // todo
+
+        Ok(())
+    }
+
     fn verify(&self, url: &str) -> VerifierResult<Messages> {
         let mut messages = Messages::new(url);
 

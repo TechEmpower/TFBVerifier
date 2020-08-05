@@ -22,6 +22,15 @@ pub struct Error {
     pub headers: String,
     pub message: String,
 }
+
+/// The mechanism for message interfacing with the calling `TFBToolset`. Every
+/// `verify` implementation should instantiate a new `Messages` object for any
+/// `url` and set the `body` and `headers` after a successful request is made.
+/// These values are the context for any verification errors and warnings.
+///
+/// After setting the context, callers should invoke the convenience functions
+/// `warning` and `error` to communicate with the calling `TFBToolset` that
+/// such events occurred.
 #[derive(Clone)]
 pub struct Messages {
     pub warnings: Vec<Warning>,

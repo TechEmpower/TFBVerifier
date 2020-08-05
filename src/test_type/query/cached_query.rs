@@ -3,14 +3,20 @@ use crate::error::VerifierResult;
 use crate::message::Messages;
 use crate::request::{get_response_body, get_response_headers, ContentType};
 use crate::test_type::query::Query;
-use crate::test_type::Verifier;
+use crate::test_type::Executor;
 
 pub struct CachedQuery {
     pub concurrency_levels: Vec<i64>,
     pub database_verifier: Box<dyn DatabaseInterface>,
 }
 impl Query for CachedQuery {}
-impl Verifier for CachedQuery {
+impl Executor for CachedQuery {
+    fn benchmark(&self, _url: &str) -> VerifierResult<()> {
+        // todo
+
+        Ok(())
+    }
+
     fn verify(&self, url: &str) -> VerifierResult<Messages> {
         let mut messages = Messages::new(url);
 

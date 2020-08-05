@@ -3,14 +3,20 @@ use crate::error::VerifierResult;
 use crate::message::Messages;
 use crate::request::{get_response_body, get_response_headers, ContentType};
 use crate::test_type::query::Query;
-use crate::test_type::Verifier;
+use crate::test_type::Executor;
 
 pub struct MultiQuery {
     pub concurrency_levels: Vec<i64>,
     pub database_verifier: Box<dyn DatabaseInterface>,
 }
 impl Query for MultiQuery {}
-impl Verifier for MultiQuery {
+impl Executor for MultiQuery {
+    fn benchmark(&self, _url: &str) -> VerifierResult<()> {
+        // todo
+
+        Ok(())
+    }
+
     /// Validates the response is a JSON array of the proper length, each JSON
     /// Object in the array has keys 'id' and 'randomNumber', and these keys
     /// map to integer-ish types.

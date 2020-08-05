@@ -3,7 +3,7 @@ use crate::error::VerifierResult;
 use crate::message::Messages;
 use crate::request::{get_response_body, get_response_headers, ContentType};
 use crate::test_type::query::Query;
-use crate::test_type::Verifier;
+use crate::test_type::Executor;
 use std::cmp;
 
 pub struct Updates {
@@ -11,7 +11,13 @@ pub struct Updates {
     pub database_verifier: Box<dyn DatabaseInterface>,
 }
 impl Query for Updates {}
-impl Verifier for Updates {
+impl Executor for Updates {
+    fn benchmark(&self, _url: &str) -> VerifierResult<()> {
+        // todo
+
+        Ok(())
+    }
+
     fn verify(&self, url: &str) -> VerifierResult<Messages> {
         let mut messages = Messages::new(url);
 

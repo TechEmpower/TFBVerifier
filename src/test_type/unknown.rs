@@ -1,12 +1,18 @@
 use crate::error::VerifierResult;
 use crate::message::Messages;
 use crate::request::{get_response_body, get_response_headers, ContentType};
-use crate::test_type::Verifier;
+use crate::test_type::Executor;
 
 pub struct Unknown {
     pub(crate) test_type: String,
 }
-impl Verifier for Unknown {
+impl Executor for Unknown {
+    fn benchmark(&self, _url: &str) -> VerifierResult<()> {
+        // todo
+
+        Ok(())
+    }
+
     fn verify(&self, url: &str) -> VerifierResult<Messages> {
         let mut messages = Messages::new(url);
 

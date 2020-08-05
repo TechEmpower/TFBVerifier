@@ -2,7 +2,7 @@ use crate::database::DatabaseInterface;
 use crate::error::VerifierResult;
 use crate::message::Messages;
 use crate::request::{get_response_body, get_response_headers, ContentType};
-use crate::test_type::Verifier;
+use crate::test_type::Executor;
 use html5ever::tendril::*;
 use html5ever::tokenizer::Token::{CharacterTokens, DoctypeToken, TagToken};
 use html5ever::tokenizer::{
@@ -15,7 +15,13 @@ pub struct Fortune {
     pub concurrency_levels: Vec<i64>,
     pub database_verifier: Box<dyn DatabaseInterface>,
 }
-impl Verifier for Fortune {
+impl Executor for Fortune {
+    fn benchmark(&self, _url: &str) -> VerifierResult<()> {
+        // todo
+
+        Ok(())
+    }
+
     /// Parses the given HTML string and asks the FortuneHTMLParser whether
     /// the parsed string is a valid fortune response.
     fn verify(&self, url: &str) -> VerifierResult<Messages> {

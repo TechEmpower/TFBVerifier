@@ -1,7 +1,18 @@
-pub mod fortune;
-pub mod json;
-pub mod plaintext;
-pub mod query;
+//! This module is used for defining valid `TestType`s as well as constructing
+//! the corresponding `Executor`.
+//!
+//! Note: adding a new type of test to the suite requires the following action:
+//!
+//!  1. Add the new test to the `TestType` enum
+//!  2. Implement the new test type `Executor` trait
+//!     (see [json](crate::test_type::json::Json) for an example)
+//!  3. Implement the branch of the `match` in `get_executor` for the new `TestType`
+//!
+
+mod fortune;
+mod json;
+mod plaintext;
+mod query;
 mod unknown;
 
 use crate::database::Database;
@@ -22,16 +33,22 @@ use std::thread::sleep;
 use std::time::Duration;
 use strum_macros::EnumString;
 
+/// Enumerates all the test types about which this project is aware. In order
+/// to obtain an `Executor` for processing either a verification or a benchmark
+/// of a URL, the test type must be one of these enumerates `TestTypes` *and*
+/// have a corresponding `Executor` implementation.
 #[derive(EnumString)]
 #[strum(serialize_all = "lowercase")]
 pub enum TestType {
     Json,
+    // left as `db` for legacy support
     #[strum(serialize = "db")]
-    SingleQuery, // left as `db` for legacy support
+    SingleQuery,
     #[strum(serialize = "cached_query")]
     CachedQuery,
+    // left as `query` for legacy support
     #[strum(serialize = "query")]
-    MultiQuery, // left as `query` for legacy support
+    MultiQuery,
     Fortune,
     Update,
     Plaintext,
@@ -47,12 +64,12 @@ impl TestType {
         }
     }
 
-    /// Gets a verifier for the given `test_type_name`.
-    pub fn get_verifier(
+    /// Gets an `Executor` for the given `test_type_name`.
+    pub fn get_executor(
         &self,
         database_name: Option<String>,
         concurrency_levels: Vec<i64>,
-    ) -> VerifierResult<Box<dyn Verifier>> {
+    ) -> VerifierResult<Box<dyn Executor>> {
         let database = if let Some(name) = database_name {
             Some(Database::get(&name)?)
         } else {
@@ -88,19 +105,27 @@ impl TestType {
     }
 }
 
-/// The `Verifier` trait is how the entire orchestration of verification works.
-/// There is a solitary method `verify` which accepts a `url` and returns a
-/// result of messages to display to the user.
+/// The `Executor` trait is how the entire orchestration of verification and
+/// benchmarking works.
 ///
-/// Verifier implementors are the masters of their own destinies - since only a
-/// url is provided, it is expected (though, not strictly required) that the
+/// `Executor` implementors are the masters of their own destinies - since only
+/// a url is provided, it is expected (though, not strictly required) that the
 /// implementation will request said url, capture the response headers and
-/// body, and against them perform a verification.
-pub trait Verifier {
+/// body, and against them perform a verification or benchmark.
+pub trait Executor {
+    /// Benchmarks the given `url`.
+    ///
+    /// Note: this method is not expected to produce results of the benchmark
+    /// in a consumable way for the purposes of this application; rather, it
+    /// should send the output of the benchmark to `stdout` with the
+    /// understanding that the caller of this application will consume.
+    fn benchmark(&self, url: &str) -> VerifierResult<()>;
+
+    /// Verifies the given `url`.
     fn verify(&self, url: &str) -> VerifierResult<Messages>;
 
     /// Verifies the headers of a framework response
-    /// `should_be` is a switch for the three acceptable content types
+    /// `should_be` is a switch for the acceptable content types
     fn verify_headers(
         &self,
         headers: &HashMap<String, String>,

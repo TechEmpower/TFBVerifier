@@ -2,6 +2,7 @@ mod database;
 mod error;
 mod logger;
 mod message;
+mod mode;
 mod request;
 mod test_type;
 
@@ -11,15 +12,17 @@ extern crate threadpool;
 
 use crate::error::VerifierResult;
 use crate::logger::{log, LogOptions};
+use crate::mode::Mode;
 use crate::test_type::TestType;
 use colored::Colorize;
 use std::env;
 use std::str::FromStr;
 
 fn main() -> VerifierResult<()> {
+    let mode_name = env::var("MODE")?;
     let port = env::var("PORT")?.parse::<u32>()?;
     let endpoint = env::var("ENDPOINT")?;
-    let test_type_name = &env::var("TEST_TYPE")?;
+    let test_type_name = env::var("TEST_TYPE")?;
     let concurrency_levels = env::var("CONCURRENCY_LEVELS")?;
     let database = match env::var("DATABASE") {
         Ok(database) => Some(database),
@@ -29,7 +32,7 @@ fn main() -> VerifierResult<()> {
     let test_type = TestType::get(&test_type_name)?;
     let url = format!("http://{}:{}{}", "tfb-server", port, endpoint);
 
-    let verifier = test_type.get_verifier(
+    let executor = test_type.get_executor(
         database,
         concurrency_levels
             .split(',')
@@ -37,17 +40,27 @@ fn main() -> VerifierResult<()> {
             .collect(),
     )?;
 
-    log(
-        format!("VERIFYING {}", test_type_name).bright_white(),
-        LogOptions {
-            border: Some('-'),
-            border_bottom: None,
-            quiet: false,
-        },
-    );
+    match Mode::get(&mode_name)? {
+        Mode::Benchmark => {
+            // todo
+        }
+        Mode::Verify => {
+            log(
+                format!("VERIFYING {}", test_type_name).bright_white(),
+                LogOptions {
+                    border: Some('-'),
+                    border_bottom: None,
+                    quiet: false,
+                },
+            );
 
-    let messages = verifier.verify(&url)?;
-    messages.output_results();
+            let messages = executor.verify(&url)?;
+            messages.output_results();
+        }
+        Mode::Unknown(_mode) => {
+            // todo - should probably output *something*
+        }
+    };
 
     Ok(())
 }

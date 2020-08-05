@@ -3,7 +3,7 @@ use crate::error::VerifierResult;
 use crate::message::Messages;
 use crate::request::{get_response_body, get_response_headers, ContentType};
 use crate::test_type::query::Query;
-use crate::test_type::Verifier;
+use crate::test_type::Executor;
 use serde_json::Value;
 
 pub struct SingleQuery {
@@ -11,7 +11,13 @@ pub struct SingleQuery {
     pub database_verifier: Box<dyn DatabaseInterface>,
 }
 impl Query for SingleQuery {}
-impl Verifier for SingleQuery {
+impl Executor for SingleQuery {
+    fn benchmark(&self, _url: &str) -> VerifierResult<()> {
+        // todo
+
+        Ok(())
+    }
+
     fn verify(&self, url: &str) -> VerifierResult<Messages> {
         let mut messages = Messages::new(url);
 
