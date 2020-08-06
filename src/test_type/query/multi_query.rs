@@ -17,8 +17,8 @@ impl Executor for MultiQuery {
         // todo
 
         Ok(BenchmarkCommands {
-            primer_command: "".to_string(),
-            warmup_command: "".to_string(),
+            primer_command: vec![],
+            warmup_command: vec![],
             benchmark_commands: vec![],
         })
     }

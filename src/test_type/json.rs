@@ -12,18 +12,16 @@ pub struct Json {
 }
 impl Executor for Json {
     fn retrieve_benchmark_commands(&self, url: &str) -> VerifierResult<BenchmarkCommands> {
-        let accept = "application/json,text/html;q=0.9,application/xhtml+xml;q=0.9,application/xml;q=0.8,*/*;q=0.7";
-
         Ok(BenchmarkCommands {
-            primer_command: format!("wrk -H 'Host: tfb-server' -H 'Accept: {}' -H 'Connection: keep-alive' --latency -d 5 -c 8 --timeout 8 -t 8 {}", accept, url),
-            warmup_command: format!("wrk -H 'Host: tfb-server' -H 'Accept: {}' -H 'Connection: keep-alive' --latency -d 15 -c 512 --timeout 8 -t {} {}", accept, num_cpus::get(), url),
+            primer_command: self.get_wrk_command(url, 8),
+            warmup_command: self.get_wrk_command(url, 512),
             benchmark_commands: vec![
-                format!("wrk -H 'Host: tfb-server' -H 'Accept: {}' -H 'Connection: keep-alive' --latency -d 15 -c 16 --timeout 8 -t {} {}", accept, min(16, num_cpus::get()), url),
-                format!("wrk -H 'Host: tfb-server' -H 'Accept: {}' -H 'Connection: keep-alive' --latency -d 15 -c 32 --timeout 8 -t {} {}", accept, min(32, num_cpus::get()), url),
-                format!("wrk -H 'Host: tfb-server' -H 'Accept: {}' -H 'Connection: keep-alive' --latency -d 15 -c 64 --timeout 8 -t {} {}", accept, min(64, num_cpus::get()), url),
-                format!("wrk -H 'Host: tfb-server' -H 'Accept: {}' -H 'Connection: keep-alive' --latency -d 15 -c 128 --timeout 8 -t {} {}", accept, min(128, num_cpus::get()), url),
-                format!("wrk -H 'Host: tfb-server' -H 'Accept: {}' -H 'Connection: keep-alive' --latency -d 15 -c 256 --timeout 8 -t {} {}", accept, min(256, num_cpus::get()), url),
-                format!("wrk -H 'Host: tfb-server' -H 'Accept: {}' -H 'Connection: keep-alive' --latency -d 15 -c 512 --timeout 8 -t {} {}", accept, min(512, num_cpus::get()), url),
+                self.get_wrk_command(url, 16),
+                self.get_wrk_command(url, 32),
+                self.get_wrk_command(url, 64),
+                self.get_wrk_command(url, 128),
+                self.get_wrk_command(url, 256),
+                self.get_wrk_command(url, 512),
             ],
         })
     }
@@ -43,6 +41,28 @@ impl Executor for Json {
     }
 }
 impl Json {
+    fn get_wrk_command(&self, url: &str, concurrency: usize) -> Vec<String> {
+        vec![
+            "wrk",
+            "-H",
+            "Host: tfb-server",
+            "-H",
+            "application/json,text/html;q=0.9,application/xhtml+xml;q=0.9,application/xml;q=0.8,*/*;q=0.7",
+            "-H",
+            "Connection: keep-alive",
+            "--latency",
+            "-d",
+            "15",
+            "-c",
+            &format!("{}", concurrency),
+            "--timeout",
+            "8",
+            "-t",
+            &format!("{}", min(concurrency, num_cpus::get())),
+            url,
+        ].iter().map(|item| item.to_string()).collect()
+    }
+
     fn verify_json(&self, response_body: &str, messages: &mut Messages) {
         if response_body.len() > 27 {
             messages.warning(
