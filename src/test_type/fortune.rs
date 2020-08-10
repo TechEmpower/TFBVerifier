@@ -9,22 +9,28 @@ use html5ever::tokenizer::Token::{CharacterTokens, DoctypeToken, TagToken};
 use html5ever::tokenizer::{
     BufferQueue, Token, TokenSink, TokenSinkResult, Tokenizer, TokenizerOpts,
 };
+use std::cmp::min;
 
 const FORTUNES: &str = "<!doctype html><html><head><title>Fortunes</title></head><body><table><tr><th>id</th><th>message</th></tr><tr><td>11</td><td>&lt;script&gt;alert(&quot;This should not be displayed in a browser alert box.&quot;);&lt;/script&gt;</td></tr><tr><td>4</td><td>A bad random number generator: 1, 1, 1, 1, 1, 4.33e+67, 1, 1, 1</td></tr><tr><td>5</td><td>A computer program does what you tell it to do, not what you want it to do.</td></tr><tr><td>2</td><td>A computer scientist is someone who fixes things that aren&apos;t broken.</td></tr><tr><td>8</td><td>A list is only as strong as its weakest link. — Donald Knuth</td></tr><tr><td>0</td><td>Additional fortune added at request time.</td></tr><tr><td>3</td><td>After enough decimal places, nobody gives a damn.</td></tr><tr><td>7</td><td>Any program that runs right is obsolete.</td></tr><tr><td>10</td><td>Computers make very fast, very accurate mistakes.</td></tr><tr><td>6</td><td>Emacs is a nice operating system, but I prefer UNIX. — Tom Christaensen</td></tr><tr><td>9</td><td>Feature: A bug with seniority.</td></tr><tr><td>1</td><td>fortune: No such file or directory</td></tr><tr><td>12</td><td>フレームワークのベンチマーク</td></tr></table></body></html>";
 
 pub struct Fortune {
-    pub concurrency_levels: Vec<i64>,
-    pub pipeline_concurrency_levels: Vec<i64>,
+    pub concurrency_levels: Vec<usize>,
     pub database_verifier: Box<dyn DatabaseInterface>,
 }
 impl Executor for Fortune {
-    fn retrieve_benchmark_commands(&self, _url: &str) -> VerifierResult<BenchmarkCommands> {
-        // todo
+    fn retrieve_benchmark_commands(&self, url: &str) -> VerifierResult<BenchmarkCommands> {
+        let primer_command = self.get_wrk_command(url, 5, 8);
+        let warmup_command =
+            self.get_wrk_command(url, 15, *self.concurrency_levels.iter().max().unwrap());
+        let mut benchmark_commands = Vec::default();
+        for concurrency in &self.concurrency_levels {
+            benchmark_commands.push(self.get_wrk_command(url, 15, *concurrency));
+        }
 
         Ok(BenchmarkCommands {
-            primer_command: vec![],
-            warmup_command: vec![],
-            benchmark_commands: vec![],
+            primer_command,
+            warmup_command,
+            benchmark_commands,
         })
     }
 
@@ -79,6 +85,28 @@ impl Executor for Fortune {
     }
 }
 impl Fortune {
+    fn get_wrk_command(&self, url: &str, duration: usize, concurrency: usize) -> Vec<String> {
+        vec![
+            "wrk",
+            "-H",
+            "Host: tfb-server",
+            "-H",
+            "Accept: application/json,text/html;q=0.9,application/xhtml+xml;q=0.9,application/xml;q=0.8,*/*;q=0.7",
+            "-H",
+            "Connection: keep-alive",
+            "--latency",
+            "-d",
+            &format!("{}", duration),
+            "-c",
+            &format!("{}", concurrency),
+            "--timeout",
+            "8",
+            "-t",
+            &format!("{}", min(concurrency, num_cpus::get())),
+            url,
+        ].iter().map(|item| item.to_string()).collect()
+    }
+
     /// Returns whether the HTML input parsed by this parser is valid against
     /// our known "fortune" spec.
     fn verify_fortune(&self, response_body: &str, messages: &mut Messages) -> bool {
@@ -289,7 +317,6 @@ mod tests {
         let valid = FORTUNES;
         let fortune = Fortune {
             concurrency_levels: vec![16, 32, 64, 128, 256, 512],
-            pipeline_concurrency_levels: vec![16, 32, 64, 128, 256, 512],
             database_verifier: Box::new(Mysql {}),
         };
 

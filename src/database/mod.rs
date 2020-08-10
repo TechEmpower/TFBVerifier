@@ -10,12 +10,12 @@ use crate::database::mysql::Mysql;
 use crate::database::postgres::Postgres;
 use crate::error::VerifierError::InvalidDatabaseType;
 use crate::error::VerifierResult;
-use crate::verification::Messages;
 use crate::request::request;
+use crate::verification::Messages;
 use std::cmp;
 use std::collections::HashMap;
 use std::str::FromStr;
-use std::sync::atomic::{AtomicI64, AtomicU32, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use strum_macros::EnumString;
 use threadpool::ThreadPool;
@@ -61,9 +61,9 @@ pub trait DatabaseInterface {
         &self,
         url: &str,
         table_name: &str,
-        concurrency: i64,
-        repetitions: i64,
-        expected_queries: i64,
+        concurrency: usize,
+        repetitions: usize,
+        expected_queries: usize,
         messages: &mut Messages,
     ) {
         let all_queries_before_count = self.get_count_of_all_queries_for_table(table_name);
@@ -95,9 +95,9 @@ pub trait DatabaseInterface {
         &self,
         url: &str,
         table_name: &str,
-        concurrency: i64,
-        repetitions: i64,
-        expected_rows: i64,
+        concurrency: usize,
+        repetitions: usize,
+        expected_rows: usize,
         messages: &mut Messages,
     ) {
         let all_rows_selected_before_count = self.get_count_of_rows_selected_for_table(table_name);
@@ -140,14 +140,14 @@ pub trait DatabaseInterface {
     fn issue_multi_query_requests(
         &self,
         url: &str,
-        concurrency: i64,
-        repetitions: i64,
+        concurrency: usize,
+        repetitions: usize,
         messages: &mut Messages,
     ) {
-        let transaction_failures = Arc::new(AtomicU32::new(0));
-        let transaction_successes = Arc::new(AtomicU32::new(0));
+        let transaction_failures = Arc::new(AtomicUsize::new(0));
+        let transaction_successes = Arc::new(AtomicUsize::new(0));
         for _ in 0..repetitions {
-            let requests_to_send = Arc::new(AtomicI64::new(concurrency - 1));
+            let requests_to_send = Arc::new(AtomicUsize::new(concurrency - 1));
             let pool = ThreadPool::new(num_cpus::get());
 
             for _ in 0..num_cpus::get() {
@@ -178,7 +178,7 @@ pub trait DatabaseInterface {
             );
         }
         let successes = transaction_successes.load(Ordering::SeqCst);
-        if successes as i64 != concurrency * repetitions {
+        if successes != concurrency * repetitions {
             messages.error(
                 format!("Unexpected response count from {}: {}", url, successes),
                 "Unexpected Responses",
@@ -207,13 +207,13 @@ pub trait DatabaseInterface {
     fn insert_one_thousand_fortunes(&self);
 
     /// Gets the count of all queries run against the given `table_name`.
-    fn get_count_of_all_queries_for_table(&self, table_name: &str) -> i64;
+    fn get_count_of_all_queries_for_table(&self, table_name: &str) -> usize;
 
     /// Gets the count of all rows selected for the given `table_name`.
-    fn get_count_of_rows_selected_for_table(&self, table_name: &str) -> i64;
+    fn get_count_of_rows_selected_for_table(&self, table_name: &str) -> usize;
 
     /// Gets the count of all rows updated for the given `table_name`.
-    fn get_count_of_rows_updated_for_table(&self, table_name: &str) -> i64;
+    fn get_count_of_rows_updated_for_table(&self, table_name: &str) -> usize;
 }
 
 //

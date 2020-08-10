@@ -69,8 +69,8 @@ impl TestType {
     pub fn get_executor(
         &self,
         database_name: Option<String>,
-        concurrency_levels: Vec<i64>,
-        pipeline_concurrency_levels: Vec<i64>,
+        concurrency_levels: Vec<usize>,
+        pipeline_concurrency_levels: Vec<usize>,
     ) -> VerifierResult<Box<dyn Executor>> {
         let database = if let Some(name) = database_name {
             Some(Database::get(&name)?)
@@ -78,37 +78,28 @@ impl TestType {
             None
         };
         match self {
-            TestType::Json => Ok(Box::new(Json {
-                concurrency_levels,
-                pipeline_concurrency_levels,
-            })),
+            TestType::Json => Ok(Box::new(Json { concurrency_levels })),
             TestType::SingleQuery => Ok(Box::new(SingleQuery {
                 database_verifier: database.unwrap(),
                 concurrency_levels,
-                pipeline_concurrency_levels,
             })),
             TestType::MultiQuery => Ok(Box::new(MultiQuery {
                 database_verifier: database.unwrap(),
                 concurrency_levels,
-                pipeline_concurrency_levels,
             })),
             TestType::CachedQuery => Ok(Box::new(CachedQuery {
                 database_verifier: database.unwrap(),
                 concurrency_levels,
-                pipeline_concurrency_levels,
             })),
             TestType::Fortune => Ok(Box::new(Fortune {
                 database_verifier: database.unwrap(),
                 concurrency_levels,
-                pipeline_concurrency_levels,
             })),
             TestType::Update => Ok(Box::new(Updates {
                 database_verifier: database.unwrap(),
                 concurrency_levels,
-                pipeline_concurrency_levels,
             })),
             TestType::Plaintext => Ok(Box::new(Plaintext {
-                concurrency_levels,
                 pipeline_concurrency_levels,
             })),
             TestType::Unknown(test_type) => Ok(Box::new(Unknown {

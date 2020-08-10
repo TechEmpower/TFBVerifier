@@ -7,22 +7,22 @@ use serde_json::Value;
 use std::cmp::min;
 
 pub struct Json {
-    pub concurrency_levels: Vec<i64>,
-    pub pipeline_concurrency_levels: Vec<i64>,
+    pub concurrency_levels: Vec<usize>,
 }
 impl Executor for Json {
     fn retrieve_benchmark_commands(&self, url: &str) -> VerifierResult<BenchmarkCommands> {
+        let primer_command = self.get_wrk_command(url, 5, 8);
+        let warmup_command =
+            self.get_wrk_command(url, 15, *self.concurrency_levels.iter().max().unwrap());
+        let mut benchmark_commands = Vec::default();
+        for concurrency in &self.concurrency_levels {
+            benchmark_commands.push(self.get_wrk_command(url, 15, *concurrency));
+        }
+
         Ok(BenchmarkCommands {
-            primer_command: self.get_wrk_command(url, 8),
-            warmup_command: self.get_wrk_command(url, 512),
-            benchmark_commands: vec![
-                self.get_wrk_command(url, 16),
-                self.get_wrk_command(url, 32),
-                self.get_wrk_command(url, 64),
-                self.get_wrk_command(url, 128),
-                self.get_wrk_command(url, 256),
-                self.get_wrk_command(url, 512),
-            ],
+            primer_command,
+            warmup_command,
+            benchmark_commands,
         })
     }
 
@@ -41,18 +41,18 @@ impl Executor for Json {
     }
 }
 impl Json {
-    fn get_wrk_command(&self, url: &str, concurrency: usize) -> Vec<String> {
+    fn get_wrk_command(&self, url: &str, duration: usize, concurrency: usize) -> Vec<String> {
         vec![
             "wrk",
             "-H",
             "Host: tfb-server",
             "-H",
-            "application/json,text/html;q=0.9,application/xhtml+xml;q=0.9,application/xml;q=0.8,*/*;q=0.7",
+            "Accept: application/json,text/html;q=0.9,application/xhtml+xml;q=0.9,application/xml;q=0.8,*/*;q=0.7",
             "-H",
             "Connection: keep-alive",
             "--latency",
             "-d",
-            "15",
+            &format!("{}", duration),
             "-c",
             &format!("{}", concurrency),
             "--timeout",
@@ -130,7 +130,6 @@ mod tests {
     fn it_should_succeed_on_correct_body() {
         let json = Json {
             concurrency_levels: vec![16, 32, 64, 128, 256, 512],
-            pipeline_concurrency_levels: vec![16, 32, 64, 128, 256, 512],
         };
         let mut messages = Messages::default();
         json.verify_json("{\"message\":\"Hello, World!\"}", &mut messages);
@@ -142,7 +141,6 @@ mod tests {
     fn it_should_error_on_valid_json_but_bad_message() {
         let json = Json {
             concurrency_levels: vec![16, 32, 64, 128, 256, 512],
-            pipeline_concurrency_levels: vec![16, 32, 64, 128, 256, 512],
         };
         let mut messages = Messages::default();
         json.verify_json("{\"message\":{}}", &mut messages);
@@ -163,7 +161,6 @@ mod tests {
     fn it_should_error_on_invalid_json_hello_world_object() {
         let json = Json {
             concurrency_levels: vec![16, 32, 64, 128, 256, 512],
-            pipeline_concurrency_levels: vec![16, 32, 64, 128, 256, 512],
         };
         let mut messages = Messages::default();
         json.verify_json("{\"message\":", &mut messages);
@@ -180,7 +177,6 @@ mod tests {
     fn it_should_warn_on_additional_keys() {
         let json = Json {
             concurrency_levels: vec![16, 32, 64, 128, 256, 512],
-            pipeline_concurrency_levels: vec![16, 32, 64, 128, 256, 512],
         };
         let mut messages = Messages::default();
         json.verify_json(
@@ -201,7 +197,6 @@ mod tests {
     fn it_should_warn_on_additional_bytes() {
         let json = Json {
             concurrency_levels: vec![16, 32, 64, 128, 256, 512],
-            pipeline_concurrency_levels: vec![16, 32, 64, 128, 256, 512],
         };
         let mut messages = Messages::default();
         json.verify_json(
@@ -225,7 +220,6 @@ mod tests {
     fn it_should_error_on_missing_message_key() {
         let json = Json {
             concurrency_levels: vec![16, 32, 64, 128, 256, 512],
-            pipeline_concurrency_levels: vec![16, 32, 64, 128, 256, 512],
         };
         let mut messages = Messages::default();
         json.verify_json("{\"not_message\":\"Hello, World!\"}", &mut messages);
@@ -242,7 +236,6 @@ mod tests {
     fn it_should_error_on_invalid_hello_world_value() {
         let json = Json {
             concurrency_levels: vec![16, 32, 64, 128, 256, 512],
-            pipeline_concurrency_levels: vec![16, 32, 64, 128, 256, 512],
         };
         let mut messages = Messages::default();
         json.verify_json("{\"message\":\"Hello, Moto!\"}", &mut messages);

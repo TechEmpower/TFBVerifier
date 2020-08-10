@@ -5,21 +5,27 @@ use crate::request::{get_response_body, get_response_headers, ContentType};
 use crate::test_type::query::Query;
 use crate::test_type::Executor;
 use crate::verification::Messages;
+use std::cmp::min;
 
 pub struct CachedQuery {
-    pub concurrency_levels: Vec<i64>,
-    pub pipeline_concurrency_levels: Vec<i64>,
+    pub concurrency_levels: Vec<usize>,
     pub database_verifier: Box<dyn DatabaseInterface>,
 }
 impl Query for CachedQuery {}
 impl Executor for CachedQuery {
-    fn retrieve_benchmark_commands(&self, _url: &str) -> VerifierResult<BenchmarkCommands> {
-        // todo
+    fn retrieve_benchmark_commands(&self, url: &str) -> VerifierResult<BenchmarkCommands> {
+        let primer_command = self.get_wrk_command(url, 5, 8);
+        let warmup_command =
+            self.get_wrk_command(url, 15, *self.concurrency_levels.iter().max().unwrap());
+        let mut benchmark_commands = Vec::default();
+        for concurrency in &self.concurrency_levels {
+            benchmark_commands.push(self.get_wrk_command(url, 15, *concurrency));
+        }
 
         Ok(BenchmarkCommands {
-            primer_command: vec![],
-            warmup_command: vec![],
-            benchmark_commands: vec![],
+            primer_command,
+            warmup_command,
+            benchmark_commands,
         })
     }
 
@@ -52,4 +58,26 @@ impl Executor for CachedQuery {
         Ok(messages)
     }
 }
-impl CachedQuery {}
+impl CachedQuery {
+    fn get_wrk_command(&self, url: &str, duration: usize, concurrency: usize) -> Vec<String> {
+        vec![
+            "wrk",
+            "-H",
+            "Host: tfb-server",
+            "-H",
+            "Accept: application/json,text/html;q=0.9,application/xhtml+xml;q=0.9,application/xml;q=0.8,*/*;q=0.7",
+            "-H",
+            "Connection: keep-alive",
+            "--latency",
+            "-d",
+            &format!("{}", duration),
+            "-c",
+            &format!("{}", concurrency),
+            "--timeout",
+            "8",
+            "-t",
+            &format!("{}", min(concurrency, num_cpus::get())),
+            url,
+        ].iter().map(|item| item.to_string()).collect()
+    }
+}

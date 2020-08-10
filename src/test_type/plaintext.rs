@@ -3,19 +3,28 @@ use crate::error::VerifierResult;
 use crate::request::{get_response_body, get_response_headers, ContentType};
 use crate::test_type::Executor;
 use crate::verification::Messages;
+use std::cmp::min;
 
 pub struct Plaintext {
-    pub concurrency_levels: Vec<i64>,
-    pub pipeline_concurrency_levels: Vec<i64>,
+    pub pipeline_concurrency_levels: Vec<usize>,
 }
 impl Executor for Plaintext {
-    fn retrieve_benchmark_commands(&self, _url: &str) -> VerifierResult<BenchmarkCommands> {
-        // todo
+    fn retrieve_benchmark_commands(&self, url: &str) -> VerifierResult<BenchmarkCommands> {
+        let primer_command = self.get_wrk_command(url, 5, 8);
+        let warmup_command = self.get_wrk_command(
+            url,
+            15,
+            *self.pipeline_concurrency_levels.iter().max().unwrap(),
+        );
+        let mut benchmark_commands = Vec::default();
+        for concurrency in &self.pipeline_concurrency_levels {
+            benchmark_commands.push(self.get_wrk_command(url, 15, *concurrency));
+        }
 
         Ok(BenchmarkCommands {
-            primer_command: vec![],
-            warmup_command: vec![],
-            benchmark_commands: vec![],
+            primer_command,
+            warmup_command,
+            benchmark_commands,
         })
     }
 
@@ -58,6 +67,28 @@ impl Plaintext {
             );
         }
     }
+
+    fn get_wrk_command(&self, url: &str, duration: usize, concurrency: usize) -> Vec<String> {
+        vec![
+            "wrk",
+            "-H",
+            "Host: tfb-server",
+            "-H",
+            "Accept: text/plain,text/html;q=0.9,application/xhtml+xml;q=0.9,application/xml;q=0.8,*/*;q=0.7",
+            "-H",
+            "Connection: keep-alive",
+            "--latency",
+            "-d",
+            &format!("{}", duration),
+            "-c",
+            &format!("{}", concurrency),
+            "--timeout",
+            "8",
+            "-t",
+            &format!("{}", min(concurrency, num_cpus::get())),
+            url,
+        ].iter().map(|item| item.to_string()).collect()
+    }
 }
 
 //
@@ -72,8 +103,7 @@ mod tests {
     #[test]
     fn it_should_succeed_on_correct_body() {
         let plaintext = Plaintext {
-            concurrency_levels: vec![16, 32, 64, 128, 256, 512],
-            pipeline_concurrency_levels: vec![16, 32, 64, 128, 256, 512],
+            pipeline_concurrency_levels: vec![256, 1024, 4096, 16384],
         };
         let mut messages = Messages::default();
         plaintext.verify_plaintext("Hello, World!", &mut messages);
@@ -84,8 +114,7 @@ mod tests {
     #[test]
     fn it_should_fail_on_incorrect_message() {
         let plaintext = Plaintext {
-            concurrency_levels: vec![16, 32, 64, 128, 256, 512],
-            pipeline_concurrency_levels: vec![16, 32, 64, 128, 256, 512],
+            pipeline_concurrency_levels: vec![256, 1024, 4096, 16384],
         };
         let mut messages = Messages::default();
         plaintext.verify_plaintext("World, Hello!", &mut messages);

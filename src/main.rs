@@ -39,11 +39,11 @@ fn main() -> VerifierResult<()> {
         database,
         concurrency_levels
             .split(',')
-            .map(|item| i64::from_str(item).unwrap())
+            .map(|item| usize::from_str(item).unwrap())
             .collect(),
         pipeline_concurrency_levels
             .split(',')
-            .map(|item| i64::from_str(item).unwrap())
+            .map(|item| usize::from_str(item).unwrap())
             .collect(),
     )?;
 

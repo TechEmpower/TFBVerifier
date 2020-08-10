@@ -19,6 +19,15 @@ pub struct BenchmarkCommands {
     pub warmup_command: Vec<String>,
     pub benchmark_commands: Vec<Vec<String>>,
 }
+impl Default for BenchmarkCommands {
+    fn default() -> Self {
+        Self {
+            primer_command: Vec::default(),
+            warmup_command: Vec::default(),
+            benchmark_commands: Vec::default(),
+        }
+    }
+}
 
 /// Prints and returns a serialized `Benchmark` message.
 pub fn send_benchmark_commands(benchmark: BenchmarkCommands) -> String {
