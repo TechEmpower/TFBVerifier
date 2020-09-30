@@ -69,8 +69,8 @@ impl TestType {
     pub fn get_executor(
         &self,
         database_name: Option<String>,
-        concurrency_levels: Vec<usize>,
-        pipeline_concurrency_levels: Vec<usize>,
+        concurrency_levels: Vec<u32>,
+        pipeline_concurrency_levels: Vec<u32>,
     ) -> VerifierResult<Box<dyn Executor>> {
         let database = if let Some(name) = database_name {
             Some(Database::get(&name)?)

@@ -9,7 +9,7 @@ use serde_json::Value;
 use std::cmp::min;
 
 pub struct SingleQuery {
-    pub concurrency_levels: Vec<usize>,
+    pub concurrency_levels: Vec<u32>,
     pub database_verifier: Box<dyn DatabaseInterface>,
 }
 impl Query for SingleQuery {}
@@ -94,7 +94,7 @@ impl SingleQuery {
         }
     }
 
-    fn get_wrk_command(&self, url: &str, duration: usize, concurrency: usize) -> Vec<String> {
+    fn get_wrk_command(&self, url: &str, duration: u32, concurrency: u32) -> Vec<String> {
         vec![
             "wrk",
             "-H",
@@ -111,7 +111,7 @@ impl SingleQuery {
             "--timeout",
             "8",
             "-t",
-            &format!("{}", min(concurrency, num_cpus::get())),
+            &format!("{}", min(concurrency, num_cpus::get() as u32)),
             url,
         ].iter().map(|item| item.to_string()).collect()
     }

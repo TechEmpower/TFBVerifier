@@ -21,9 +21,9 @@ impl Mysql {
         }
     }
 
-    fn run_counting_query(&self, query: &str) -> usize {
+    fn run_counting_query(&self, query: &str) -> u32 {
         if let Some(mut client) = self.get_client() {
-            if let Ok(rows) = client.query_map(query, |(_var_name, value): (String, usize)| {
+            if let Ok(rows) = client.query_map(query, |(_var_name, value): (String, u32)| {
                 (_var_name, value)
             }) {
                 let mut sum = 0;
@@ -37,7 +37,7 @@ impl Mysql {
         0
     }
 
-    fn get_rows_updated(&self) -> usize {
+    fn get_rows_updated(&self) -> u32 {
         self.run_counting_query(r"SELECT variable_name, variable_value from PERFORMANCE_SCHEMA.SESSION_STATUS where Variable_name = 'Innodb_rows_updated'")
     }
 }
@@ -82,7 +82,7 @@ impl DatabaseInterface for Mysql {
         }
     }
 
-    fn get_count_of_all_queries_for_table(&self, _table_name: &str) -> usize {
+    fn get_count_of_all_queries_for_table(&self, _table_name: &str) -> u32 {
         let selects =
             self.run_counting_query(r"Show global status where Variable_name = 'Com_select'");
         let updates =
@@ -90,10 +90,10 @@ impl DatabaseInterface for Mysql {
 
         // Note: this is given the 1.5% margin just as in
         // `get_count_of_rows_updated_for_table`.
-        (updates as f64 * 1.015) as usize + selects
+        (updates as f64 * 1.015) as u32 + selects
     }
 
-    fn get_count_of_rows_selected_for_table(&self, _table_name: &str) -> usize {
+    fn get_count_of_rows_selected_for_table(&self, _table_name: &str) -> u32 {
         let rows_read = self.run_counting_query(r"SELECT variable_name, variable_value from PERFORMANCE_SCHEMA.SESSION_STATUS where Variable_name = 'Innodb_rows_read'");
         // Note: we explicitly do not call `get_count_of_rows_updated_for_table`
         // here because we are going to subtract the rows updated from the rows
@@ -121,9 +121,9 @@ impl DatabaseInterface for Mysql {
     /// **A** query is still run as a part of the check, so
     /// `get_count_of_all_queries_for_table` still returns the correct
     /// number even when several of these no-op `updates` are dropped.
-    fn get_count_of_rows_updated_for_table(&self, _table_name: &str) -> usize {
+    fn get_count_of_rows_updated_for_table(&self, _table_name: &str) -> u32 {
         let count = self.get_rows_updated();
 
-        (count as f64 * 1.015) as usize
+        (count as f64 * 1.015) as u32
     }
 }

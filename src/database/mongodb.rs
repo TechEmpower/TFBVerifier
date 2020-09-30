@@ -47,7 +47,7 @@ impl DatabaseInterface for Mongodb {
         }
     }
 
-    fn get_count_of_all_queries_for_table(&self, _table_name: &str) -> usize {
+    fn get_count_of_all_queries_for_table(&self, _table_name: &str) -> u32 {
         let client = self.get_client();
 
         let database = client.database("hello_world");
@@ -57,10 +57,10 @@ impl DatabaseInterface for Mongodb {
             if let Ok(opcounters) = bson_doc.get_document("opcounters") {
                 let mut sum = 0;
                 if let Ok(update) = opcounters.get_i64("update") {
-                    sum += update as usize;
+                    sum += update as u32;
                 }
                 if let Ok(query) = opcounters.get_i64("query") {
-                    sum += query as usize;
+                    sum += query as u32;
                 }
                 return sum;
             }
@@ -69,7 +69,7 @@ impl DatabaseInterface for Mongodb {
         0
     }
 
-    fn get_count_of_rows_selected_for_table(&self, table_name: &str) -> usize {
+    fn get_count_of_rows_selected_for_table(&self, table_name: &str) -> u32 {
         let client = self.get_client();
         // todo - this tightly couples this database type with a verifier; fix
         let rows_per_query = if table_name == "fortune" { 12 } else { 1 };
@@ -81,7 +81,7 @@ impl DatabaseInterface for Mongodb {
             if let Ok(opcounters) = bson_doc.get_document("opcounters") {
                 let mut sum = 0;
                 if let Ok(query) = opcounters.get_i64("query") {
-                    sum += query as usize;
+                    sum += query as u32;
                 }
                 return sum * rows_per_query;
             }
@@ -90,7 +90,7 @@ impl DatabaseInterface for Mongodb {
         0
     }
 
-    fn get_count_of_rows_updated_for_table(&self, table_name: &str) -> usize {
+    fn get_count_of_rows_updated_for_table(&self, table_name: &str) -> u32 {
         let client = self.get_client();
         // todo - this tightly couples this database type with a verifier; fix
         let rows_per_query = if table_name == "fortune" { 12 } else { 1 };
@@ -102,7 +102,7 @@ impl DatabaseInterface for Mongodb {
             if let Ok(opcounters) = bson_doc.get_document("opcounters") {
                 let mut sum = 0;
                 if let Ok(update) = opcounters.get_i64("update") {
-                    sum += update as usize;
+                    sum += update as u32;
                 }
                 return sum * rows_per_query;
             }
