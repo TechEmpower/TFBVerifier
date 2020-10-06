@@ -5,8 +5,9 @@ The application that verifies the response from an application running in the
 
 The goal of this application is to live in isolation from 
 [test implementations](https://github.com/TechEmpower/FrameworkBenchmarks) and 
-even the [TFBToolset](#todo). This application contains a Dockerfile which is
-how the Docker Image is created and eventually published to Dockerhub.
+even the [TFBToolset](https://github.com/TechEmpower/TFBToolset). This 
+application contains a Dockerfile which is how the Docker Image is created and 
+eventually published to Dockerhub.
 
 The TFBToolset uses that published Docker image to verify test implementations
 in the FrameworkBenchmarks project.
@@ -21,7 +22,7 @@ local machine for development and testing purposes.
 * [Rust](https://rustup.rs/)
 * [Docker](https://docs.docker.com/engine/install/)* or [Docker4Windows](https://docs.docker.com/docker-for-windows/install/)*
 * [TechEmpower Frameworks](https://github.com/TechEmpower/FrameworkBenchmarks)*
-* [TFBToolset](#todo)*
+* [TFBToolset](https://github.com/TechEmpower/TFBToolset)*
 
 \* Not required for development or testing; only full-suite testing and deploying.
 

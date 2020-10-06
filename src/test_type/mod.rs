@@ -28,6 +28,8 @@ use crate::test_type::query::single_query::SingleQuery;
 use crate::test_type::query::updates::Updates;
 use crate::test_type::unknown::Unknown;
 use crate::verification::Messages;
+
+use regex::Regex;
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::thread::sleep;
@@ -148,7 +150,7 @@ pub trait Executor {
 fn verify_headers_internal(
     headers: &HashMap<String, String>,
     url: &str,
-    _should_be: ContentType,
+    should_be: ContentType,
     should_retest: bool,
     messages: &mut Messages,
 ) {
@@ -167,21 +169,73 @@ fn verify_headers_internal(
     if !headers.contains_key("Content-Length") && !headers.contains_key("Transfer-Encoding") {
         messages.error("Required response size header missing, please include either \"Content-Length\" or \"Transfer-Encoding\"", "Missing header");
     }
-    if let Some(_date) = headers.get("Date") {
-        // todo - check format is '%a, %d %b %Y %H:%M:%S %Z'
-    }
-    if should_retest {
-        sleep(Duration::from_secs(3));
-        if let Ok(_response_headers) = get_response_headers(url) {
-            // todo - Make sure that the date object isn't cached
+    if let Some(date_str) = headers.get("Date") {
+        if let Ok(date) = chrono::DateTime::parse_from_rfc2822(date_str) {
+            if should_retest {
+                sleep(Duration::from_secs(3));
+                if let Ok(response_headers) = get_response_headers(url) {
+                    if let Some(second_date_str) = response_headers.get("Date") {
+                        if let Ok(second_date) =
+                            chrono::DateTime::parse_from_rfc2822(second_date_str)
+                        {
+                            if second_date.eq(&date) {
+                                messages.error(format!("Invalid Cached Date. Found \"{}\" and \"{}\" on separate requests.", date_str, second_date_str), "Cached Date");
+                            }
+                        }
+                    } else {
+                    }
+                }
+            }
+        } else {
+            messages.warning(
+                format!(
+                    "Invalid Date header, found \"{}\", did not match \"%a, %d %b %Y %H:%M:%S %Z\".",
+                    date_str,
+                ),
+                "Invalid Date",
+            );
         }
     }
 
-    if let Some(_content_type) = headers.get("Content-Type") {
-        // todo - match a regexp - should probably be enum function
-        // 'json':      '^application/json(; ?charset=(UTF|utf)-8)?$',
-        // 'html':      '^text/html; ?charset=(UTF|utf)-8$',
-        // 'plaintext': '^text/plain(; ?charset=(UTF|utf)-8)?$'
+    if let Some(content_type) = headers.get("Content-Type") {
+        match should_be {
+            ContentType::Json => {
+                let json = Regex::new(r"^application/json(; ?charset=(UTF|utf)-8)?$").unwrap();
+                if json.captures(content_type.as_str()).is_none() {
+                    messages.error(
+                        format!(
+                            "Invalid Content-Type header, found \"{}\", did not match \"^application/json(; ?charset=(UTF|utf)-8)?$\".",
+                            content_type,
+                        ),
+                        "Invalid Content-Type",
+                    );
+                }
+            }
+            ContentType::Html => {
+                let json = Regex::new(r"^text/html; ?charset=(UTF|utf)-8$").unwrap();
+                if json.captures(content_type.as_str()).is_none() {
+                    messages.error(
+                        format!(
+                            "Invalid Content-Type header, found \"{}\", did not match \"^text/html; ?charset=(UTF|utf)-8$\".",
+                            content_type,
+                        ),
+                        "Invalid Content-Type",
+                    );
+                }
+            }
+            ContentType::Plaintext => {
+                let json = Regex::new(r"^text/plain(; ?charset=(UTF|utf)-8)?$").unwrap();
+                if json.captures(content_type.as_str()).is_none() {
+                    messages.error(
+                        format!(
+                            "Invalid Content-Type header, found \"{}\", did not match \"^text/plain(; ?charset=(UTF|utf)-8)?$\".",
+                            content_type,
+                        ),
+                        "Invalid Content-Type",
+                    );
+                }
+            }
+        };
     }
 }
 

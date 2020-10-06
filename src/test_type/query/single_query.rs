@@ -60,6 +60,7 @@ impl Executor for SingleQuery {
             concurrency,
             repetitions,
             expected_rows,
+            1,
             &mut messages,
         );
 

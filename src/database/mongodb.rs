@@ -69,42 +69,46 @@ impl DatabaseInterface for Mongodb {
         0
     }
 
-    fn get_count_of_rows_selected_for_table(&self, table_name: &str) -> u32 {
+    fn get_count_of_rows_selected_for_table(
+        &self,
+        _table_name: &str,
+        expected_rows_per_query: u32,
+    ) -> u32 {
         let client = self.get_client();
-        // todo - this tightly couples this database type with a verifier; fix
-        let rows_per_query = if table_name == "fortune" { 12 } else { 1 };
 
         let database = client.database("hello_world");
         let mut command = Document::new();
         command.insert("serverStatus", 1);
         if let Ok(bson_doc) = database.run_command(command, None) {
-            if let Ok(opcounters) = bson_doc.get_document("opcounters") {
+            if let Ok(op_counters) = bson_doc.get_document("opcounters") {
                 let mut sum = 0;
-                if let Ok(query) = opcounters.get_i64("query") {
+                if let Ok(query) = op_counters.get_i64("query") {
                     sum += query as u32;
                 }
-                return sum * rows_per_query;
+                return sum * expected_rows_per_query;
             }
         }
 
         0
     }
 
-    fn get_count_of_rows_updated_for_table(&self, table_name: &str) -> u32 {
+    fn get_count_of_rows_updated_for_table(
+        &self,
+        _table_name: &str,
+        expected_rows_per_query: u32,
+    ) -> u32 {
         let client = self.get_client();
-        // todo - this tightly couples this database type with a verifier; fix
-        let rows_per_query = if table_name == "fortune" { 12 } else { 1 };
 
         let database = client.database("hello_world");
         let mut command = Document::new();
         command.insert("serverStatus", 1);
         if let Ok(bson_doc) = database.run_command(command, None) {
-            if let Ok(opcounters) = bson_doc.get_document("opcounters") {
+            if let Ok(op_counters) = bson_doc.get_document("opcounters") {
                 let mut sum = 0;
-                if let Ok(update) = opcounters.get_i64("update") {
+                if let Ok(update) = op_counters.get_i64("update") {
                     sum += update as u32;
                 }
-                return sum * rows_per_query;
+                return sum * expected_rows_per_query;
             }
         }
 

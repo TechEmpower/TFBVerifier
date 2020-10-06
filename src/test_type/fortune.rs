@@ -71,6 +71,7 @@ impl Executor for Fortune {
             concurrency,
             repetitions,
             expected_rows,
+            12,
             &mut messages,
         );
         if verified {

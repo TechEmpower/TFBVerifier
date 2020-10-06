@@ -30,7 +30,8 @@ pub fn log(text: ColoredString, options: LogOptions) {
     println!("{}{}", text, ColoredString::from("").clear());
 
     if let Some(_border_bottom) = options.border_bottom {
-        // todo
+        // This is a hold-over from legacy - if a use for this block is not
+        // found shortly after release, then I suggest its removal.
     } else if !border_string.is_empty() {
         println!("{}{}", border_string, ColoredString::from("").clear());
     }

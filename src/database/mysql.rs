@@ -33,7 +33,7 @@ impl Mysql {
                 return sum;
             }
         }
-        // todo - what do we do on any failure?
+
         0
     }
 
@@ -77,7 +77,12 @@ impl DatabaseInterface for Mysql {
                 )
                 .is_ok()
             {
-                // todo - wat do?
+                // Deliberately left empty. In the case of success, then great
+                // we can exit this function and the assumption is that the DB
+                // has the correct number of rows. If not, then the verifier
+                // will fail because the *correct* number of rows is never 
+                // returned to the application, which will never correctly 
+                // verify with the verifier.
             }
         }
     }
@@ -93,7 +98,11 @@ impl DatabaseInterface for Mysql {
         (updates as f64 * 1.015) as u32 + selects
     }
 
-    fn get_count_of_rows_selected_for_table(&self, _table_name: &str) -> u32 {
+    fn get_count_of_rows_selected_for_table(
+        &self,
+        _table_name: &str,
+        _expected_rows_per_query: u32,
+    ) -> u32 {
         let rows_read = self.run_counting_query(r"SELECT variable_name, variable_value from PERFORMANCE_SCHEMA.SESSION_STATUS where Variable_name = 'Innodb_rows_read'");
         // Note: we explicitly do not call `get_count_of_rows_updated_for_table`
         // here because we are going to subtract the rows updated from the rows
@@ -121,7 +130,11 @@ impl DatabaseInterface for Mysql {
     /// **A** query is still run as a part of the check, so
     /// `get_count_of_all_queries_for_table` still returns the correct
     /// number even when several of these no-op `updates` are dropped.
-    fn get_count_of_rows_updated_for_table(&self, _table_name: &str) -> u32 {
+    fn get_count_of_rows_updated_for_table(
+        &self,
+        _table_name: &str,
+        _expected_rows_per_query: u32,
+    ) -> u32 {
         let count = self.get_rows_updated();
 
         (count as f64 * 1.015) as u32

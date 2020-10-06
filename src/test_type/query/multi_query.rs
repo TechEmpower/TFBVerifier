@@ -85,6 +85,7 @@ impl Executor for MultiQuery {
                     concurrency,
                     repetitions,
                     expected_rows,
+                    1,
                     &mut messages,
                 );
             }

@@ -98,13 +98,16 @@ pub trait DatabaseInterface {
         concurrency: u32,
         repetitions: u32,
         expected_rows: u32,
+        expected_rows_per_query: u32,
         messages: &mut Messages,
     ) {
-        let all_rows_selected_before_count = self.get_count_of_rows_selected_for_table(table_name);
+        let all_rows_selected_before_count =
+            self.get_count_of_rows_selected_for_table(table_name, expected_rows_per_query);
 
         self.issue_multi_query_requests(url, concurrency, repetitions, messages);
 
-        let all_rows_selected_after_count = self.get_count_of_rows_selected_for_table(table_name);
+        let all_rows_selected_after_count =
+            self.get_count_of_rows_selected_for_table(table_name, expected_rows_per_query);
 
         let rows = all_rows_selected_after_count - all_rows_selected_before_count;
         // Note: Some database implementations are less accurate (though still
@@ -147,7 +150,7 @@ pub trait DatabaseInterface {
         let transaction_failures = Arc::new(AtomicU32::new(0));
         let transaction_successes = Arc::new(AtomicU32::new(0));
         for _ in 0..repetitions {
-            let requests_to_send = Arc::new(AtomicU32::new(concurrency - 1));
+            let requests_to_send = Arc::new(AtomicU32::new(concurrency));
             let pool = ThreadPool::new(num_cpus::get());
 
             for _ in 0..num_cpus::get() {
@@ -156,17 +159,24 @@ pub trait DatabaseInterface {
                 let transaction_successes = Arc::clone(&transaction_successes);
                 let requests = Arc::clone(&requests_to_send);
                 pool.execute(move || loop {
-                    let remaining = requests.load(Ordering::SeqCst);
-                    if remaining == 0 {
-                        break;
-                    }
                     match request(&*url) {
-                        Ok(_) => transaction_successes.fetch_add(1, Ordering::SeqCst),
-                        Err(_) => transaction_failures.fetch_add(1, Ordering::SeqCst),
+                        Ok(_) => {
+                            if requests.load(Ordering::SeqCst) > 0 {
+                                requests.fetch_sub(1, Ordering::SeqCst);
+                                transaction_successes.fetch_add(1, Ordering::SeqCst);
+                            } else {
+                                break;
+                            }
+                        }
+                        Err(_) => {
+                            if requests.load(Ordering::SeqCst) > 0 {
+                                requests.fetch_sub(1, Ordering::SeqCst);
+                                transaction_failures.fetch_add(1, Ordering::SeqCst);
+                            } else {
+                                break;
+                            }
+                        }
                     };
-                    if 0 < requests.load(Ordering::SeqCst) {
-                        requests.fetch_sub(1, Ordering::SeqCst);
-                    }
                 });
             }
             pool.join();
@@ -182,7 +192,12 @@ pub trait DatabaseInterface {
         let successes = transaction_successes.load(Ordering::SeqCst);
         if successes != concurrency * repetitions {
             messages.error(
-                format!("Unexpected response count from {}: {}", url, successes),
+                format!(
+                    "Unexpected response count from {}: {}; expected: {}",
+                    url,
+                    successes,
+                    concurrency * repetitions
+                ),
                 "Unexpected Responses",
             );
         }
@@ -212,10 +227,14 @@ pub trait DatabaseInterface {
     fn get_count_of_all_queries_for_table(&self, table_name: &str) -> u32;
 
     /// Gets the count of all rows selected for the given `table_name`.
-    fn get_count_of_rows_selected_for_table(&self, table_name: &str) -> u32;
+    fn get_count_of_rows_selected_for_table(&self, table_name: &str, rows_per_query: u32) -> u32;
 
     /// Gets the count of all rows updated for the given `table_name`.
-    fn get_count_of_rows_updated_for_table(&self, table_name: &str) -> u32;
+    fn get_count_of_rows_updated_for_table(
+        &self,
+        table_name: &str,
+        expected_rows_per_query: u32,
+    ) -> u32;
 }
 
 //

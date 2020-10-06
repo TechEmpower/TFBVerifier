@@ -25,7 +25,7 @@ impl Postgres {
                 }
             }
         }
-        // todo - what do we do on any failure?
+        
         0
     }
 }
@@ -65,13 +65,21 @@ impl DatabaseInterface for Postgres {
         self.run_counting_query(&query, "sum")
     }
 
-    fn get_count_of_rows_selected_for_table(&self, table_name: &str) -> u32 {
+    fn get_count_of_rows_selected_for_table(
+        &self,
+        table_name: &str,
+        _expected_rows_per_query: u32,
+    ) -> u32 {
         let query = format!("SELECT SUM(rows::INTEGER) FROM pg_stat_statements WHERE query ~* '[[:<:]]{}[[:>:]]' AND query ~* 'select'", table_name);
 
         self.run_counting_query(&query, "sum")
     }
 
-    fn get_count_of_rows_updated_for_table(&self, table_name: &str) -> u32 {
+    fn get_count_of_rows_updated_for_table(
+        &self,
+        table_name: &str,
+        _expected_rows_per_query: u32,
+    ) -> u32 {
         let query = format!("SELECT SUM(rows::INTEGER) FROM pg_stat_statements WHERE query ~* '[[:<:]]{}[[:>:]]' AND query ~* 'update'", table_name);
 
         self.run_counting_query(&query, "sum")

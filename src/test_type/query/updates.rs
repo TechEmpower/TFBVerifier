@@ -76,6 +76,7 @@ impl Executor for Updates {
                     concurrency,
                     repetitions,
                     expected_rows,
+                    1,
                     &mut messages,
                 );
                 self.verify_updates_count(
@@ -114,14 +115,14 @@ impl Updates {
     ) {
         let all_rows_updated_before_count = self
             .database_verifier
-            .get_count_of_rows_updated_for_table(table_name);
+            .get_count_of_rows_updated_for_table(table_name, 1);
 
         self.database_verifier
             .issue_multi_query_requests(url, concurrency, repetitions, messages);
 
         let all_rows_updated_after_count = self
             .database_verifier
-            .get_count_of_rows_updated_for_table(table_name);
+            .get_count_of_rows_updated_for_table(table_name, 1);
 
         let updated = all_rows_updated_after_count - all_rows_updated_before_count;
         // Note: Some database implementations are less accurate (though still

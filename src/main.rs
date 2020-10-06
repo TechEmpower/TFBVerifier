@@ -16,6 +16,7 @@ use crate::error::VerifierResult;
 use crate::logger::{log, LogOptions};
 use crate::mode::Mode;
 use crate::test_type::TestType;
+use crate::verification::Messages;
 use colored::Colorize;
 use std::env;
 use std::str::FromStr;
@@ -65,8 +66,9 @@ fn main() -> VerifierResult<()> {
             let messages = executor.verify(&url)?;
             messages.output_verification_results();
         }
-        Mode::Unknown(_mode) => {
-            // todo - should probably output *something*
+        Mode::Unknown(mode) => {
+            let mut messages = Messages::default();
+            messages.error(format!("Invalid mode: {}", mode), "Invalid Mode");
         }
     };
 
