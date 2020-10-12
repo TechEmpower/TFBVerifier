@@ -154,22 +154,30 @@ fn verify_headers_internal(
     should_retest: bool,
     messages: &mut Messages,
 ) {
-    if !headers.contains_key("Server") {
+    if !headers.contains_key("Server") && !headers.contains_key("server") {
         messages.error("Required response header missing: Server", "Missing header");
     }
-    if !headers.contains_key("Date") {
+    if !headers.contains_key("Date") && !headers.contains_key("date") {
         messages.error("Required response header missing: Date", "Missing header");
     }
-    if !headers.contains_key("Content-Type") {
+    if !headers.contains_key("Content-Type") && !headers.contains_key("content-type") {
         messages.error(
             "Required response header missing: Content-Type",
             "Missing header",
         );
     }
-    if !headers.contains_key("Content-Length") && !headers.contains_key("Transfer-Encoding") {
+    if !headers.contains_key("Content-Length")
+        && !headers.contains_key("content-length")
+        && !headers.contains_key("Transfer-Encoding")
+        && !headers.contains_key("transfer-encoding")
+    {
         messages.error("Required response size header missing, please include either \"Content-Length\" or \"Transfer-Encoding\"", "Missing header");
     }
-    if let Some(date_str) = headers.get("Date") {
+    let mut date_str = headers.get("Date");
+    if date_str.is_none() {
+        date_str = headers.get("date");
+    }
+    if let Some(date_str) = date_str {
         if let Ok(date) = chrono::DateTime::parse_from_rfc2822(date_str) {
             if should_retest {
                 sleep(Duration::from_secs(3));
@@ -196,8 +204,11 @@ fn verify_headers_internal(
             );
         }
     }
-
-    if let Some(content_type) = headers.get("Content-Type") {
+    let mut content_type = headers.get("Content-Type");
+    if content_type.is_none() {
+        content_type = headers.get("content-type");
+    }
+    if let Some(content_type) = content_type {
         match should_be {
             ContentType::Json => {
                 let json = Regex::new(r"^application/json(; ?charset=(UTF|utf)-8)?$").unwrap();
