@@ -87,6 +87,10 @@ impl Plaintext {
             "-t",
             &format!("{}", min(concurrency, num_cpus::get() as u32)),
             url,
+            "-s",
+            "pipeline.lua",
+            "--",
+            "16",
         ].iter().map(|item| item.to_string()).collect()
     }
 }
