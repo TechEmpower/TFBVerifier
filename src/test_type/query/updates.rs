@@ -41,7 +41,7 @@ impl Executor for Updates {
         let expected_rows = 20 * repetitions * concurrency;
         let expected_selects = expected_rows;
         let expected_updates = expected_rows;
-        let expected_queries = expected_selects + expected_updates;
+        let expected_queries = expected_selects + (repetitions * concurrency);
         let min = 1;
         let max = 500;
 
