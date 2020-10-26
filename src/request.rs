@@ -64,7 +64,10 @@ pub fn get_response_body(url: &str, messages: &mut Messages) -> String {
     }
 }
 
-pub fn get_response_headers(url: &str) -> VerifierResult<HashMap<String, String>> {
+pub fn get_response_headers(
+    url: &str,
+    messages: &mut Messages,
+) -> VerifierResult<HashMap<String, String>> {
     let mut headers = HashMap::new();
     let mut handle = Easy::new();
     handle.url(url).unwrap();
@@ -78,7 +81,13 @@ pub fn get_response_headers(url: &str) -> VerifierResult<HashMap<String, String>
                 true
             })
             .unwrap();
-        transfer.perform().unwrap();
+        match transfer.perform() {
+            Ok(_) => {}
+            Err(e) => messages.error(
+                format!("Error requesting headers for url: {}, {:?}", url, e),
+                "Header(s) Error",
+            ),
+        };
     }
     for header in header_vec {
         let split: Vec<&str> = header.split(": ").collect();
@@ -99,10 +108,13 @@ pub fn get_response_headers(url: &str) -> VerifierResult<HashMap<String, String>
 #[cfg(test)]
 mod tests {
     use crate::request::get_response_headers;
+    use crate::verification::Messages;
 
     #[test]
     fn what_headers() {
-        let serialized = get_response_headers(&"http://www.google.com".to_string()).unwrap();
+        let url = "http://www.google.com";
+        let mut messages = Messages::new(url);
+        let serialized = get_response_headers(url, &mut messages).unwrap();
 
         for header in serialized {
             if header.0 == "Vary" {

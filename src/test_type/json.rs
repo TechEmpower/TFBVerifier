@@ -29,7 +29,7 @@ impl Executor for Json {
     fn verify(&self, url: &str) -> VerifierResult<Messages> {
         let mut messages = Messages::new(url);
 
-        let response_headers = get_response_headers(&url)?;
+        let response_headers = get_response_headers(&url, &mut messages)?;
         messages.headers(&response_headers);
         self.verify_headers(&response_headers, &url, ContentType::Json, &mut messages);
         let response_body = get_response_body(&url, &mut messages);

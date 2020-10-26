@@ -45,7 +45,7 @@ impl Executor for Updates {
         let min = 1;
         let max = 500;
 
-        let response_headers = get_response_headers(&url)?;
+        let response_headers = get_response_headers(&url, &mut messages)?;
         messages.headers(&response_headers);
         self.verify_headers(&response_headers, &url, ContentType::Json, &mut messages);
 

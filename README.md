@@ -57,7 +57,7 @@ TFBToolset in `debug` mode, which will attach the test implementation to the
 Docker Network `TFBNetwork`.
 
 ```
-$ docker run -it --network=TFBNetwork -e "PORT=[the exposed port]" -e "TEST_TYPE=[the test type you want to verify]" -e "ENDPOINT=[the relative URL]" tfb.verifier
+$ docker run -it --network=TFBNetwork -e "MODE=[probably verify, but maybe benchmark]" -e "CONCURRENCY_LEVELS=16,32,64,128,256,512" -e "PIPELINE_CONCURRENCY_LEVELS=256,1024,4096,16384" -e "DATABASE=[database you want to verify; this env var *can* be ignored]" -e "PORT=[the exposed port]" -e "TEST_TYPE=[the test type you want to verify]" -e "ENDPOINT=[the relative URL]" tfb.verifier
 ```
 
 ## Authors

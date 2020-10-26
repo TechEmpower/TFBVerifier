@@ -50,7 +50,7 @@ impl Executor for MultiQuery {
         let expected_queries = 20 * repetitions * concurrency;
         let expected_rows = expected_queries;
 
-        let response_headers = get_response_headers(&url)?;
+        let response_headers = get_response_headers(&url, &mut messages)?;
         messages.headers(&response_headers);
         self.verify_headers(&response_headers, &url, ContentType::Json, &mut messages);
 

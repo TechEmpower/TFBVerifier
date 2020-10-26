@@ -54,7 +54,7 @@ impl Database {
 /// database types will have analogues for every type of action that may be
 /// required.
 pub trait DatabaseInterface {
-    /// Checks that the number queries issued by the application after
+    /// Checks that the number of queries issued by the application after
     /// requesting `url` a known number of times (given by
     /// `concurrency` * `repetitions`) are equal.
     fn verify_queries_count(
@@ -80,7 +80,7 @@ pub trait DatabaseInterface {
         if let cmp::Ordering::Less = queries.cmp(&expected_queries) {
             messages.error(
                 format!(
-                    "Only {} executed queries in the database out of roughly {} expected.",
+                    "Only {} executed queries in the database out of at least {} expected.",
                     queries, expected_queries
                 ),
                 "Too Few Queries",

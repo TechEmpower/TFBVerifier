@@ -9,10 +9,6 @@ RUN touch src/lib.rs
 RUN cargo build --release
 RUN rm src/lib.rs
 
-COPY src src
-
-RUN cargo build --release
-
 RUN apt-get update && apt-get install -yqq libluajit-5.1-dev libssl-dev luajit
 
 WORKDIR /wrk
@@ -25,5 +21,8 @@ RUN cp wrk /usr/local/bin
 WORKDIR /
 # Required scripts for benchmarking
 COPY pipeline.lua pipeline.lua
+COPY src src
+
+RUN cargo build --release
 
 CMD target/release/tfb_verifier

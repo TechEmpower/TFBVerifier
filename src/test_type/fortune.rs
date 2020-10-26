@@ -45,7 +45,7 @@ impl Executor for Fortune {
         let expected_queries = repetitions * concurrency;
         let expected_rows = 12 * expected_queries;
 
-        let response_headers = get_response_headers(&url)?;
+        let response_headers = get_response_headers(&url, &mut messages)?;
         messages.headers(&response_headers);
         self.verify_headers(&response_headers, &url, ContentType::Html, &mut messages);
 
@@ -143,6 +143,10 @@ impl Fortune {
     /// checking of the output (in the same way as `verify_fortune`) will still
     /// hold true.
     fn verify_fortunes_are_dynamically_sized(&self, url: &str, messages: &mut Messages) {
+        // Future improvement - generate random `message` columns, query the
+        // database for the fortune table (now with 1,000 more random rows),
+        // and create our view here. We can then check string equality with
+        // the test's fortune implementation.
         self.database_verifier.insert_one_thousand_fortunes();
         let mut more_fortunes = String::from("<!doctype html><html><head><title>Fortunes</title></head><body><table><tr><th>id</th><th>message</th></tr><tr><td>11</td><td>&lt;script&gt;alert(&quot;This should not be displayed in a browser alert box.&quot;);&lt;/script&gt;</td></tr><tr><td>4</td><td>A bad random number generator: 1, 1, 1, 1, 1, 4.33e+67, 1, 1, 1</td></tr><tr><td>5</td><td>A computer program does what you tell it to do, not what you want it to do.</td></tr><tr><td>2</td><td>A computer scientist is someone who fixes things that aren&apos;t broken.</td></tr><tr><td>8</td><td>A list is only as strong as its weakest link. — Donald Knuth</td></tr><tr><td>0</td><td>Additional fortune added at request time.</td></tr><tr><td>3</td><td>After enough decimal places, nobody gives a damn.</td></tr><tr><td>7</td><td>Any program that runs right is obsolete.</td></tr><tr><td>10</td><td>Computers make very fast, very accurate mistakes.</td></tr><tr><td>6</td><td>Emacs is a nice operating system, but I prefer UNIX. — Tom Christaensen</td></tr><tr><td>9</td><td>Feature: A bug with seniority.</td></tr><tr><td>1</td><td>fortune: No such file or directory</td></tr><tr><td>12</td><td>フレームワークのベンチマーク</td></tr>");
         for i in 0..1_000 {
@@ -165,7 +169,13 @@ impl Fortune {
 
         let fortunes = normalize_html(&response_body);
 
-        if fortunes.to_lowercase() != more_fortunes.to_lowercase() {
+        // We explicitly *do not* check that the strings are equal here because
+        // of how different implementations will order equal strings. E.g. we
+        // added a bunch of copies of the last fortune above, and we order by
+        // that column - it is valid to put them in any order because they are
+        // all equal. Instead, after normalizing both, we check that we have
+        // the same character count.
+        if fortunes.chars().count() != more_fortunes.chars().count() {
             messages.error(
                 format!(
                     "Fortunes not dynamically sized. Expected length: {}; actual length: {}",

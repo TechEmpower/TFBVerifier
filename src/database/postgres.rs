@@ -25,7 +25,7 @@ impl Postgres {
                 }
             }
         }
-        
+
         0
     }
 }

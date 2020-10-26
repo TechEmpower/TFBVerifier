@@ -181,7 +181,7 @@ fn verify_headers_internal(
         if let Ok(date) = chrono::DateTime::parse_from_rfc2822(date_str) {
             if should_retest {
                 sleep(Duration::from_secs(3));
-                if let Ok(response_headers) = get_response_headers(url) {
+                if let Ok(response_headers) = get_response_headers(url, messages) {
                     if let Some(second_date_str) = response_headers.get("Date") {
                         if let Ok(second_date) =
                             chrono::DateTime::parse_from_rfc2822(second_date_str)
