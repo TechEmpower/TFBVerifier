@@ -39,9 +39,15 @@ impl Executor for Updates {
         let repetitions = 2;
         let concurrency = *self.concurrency_levels.iter().max().unwrap();
         let expected_rows = 20 * repetitions * concurrency;
-        let expected_selects = expected_rows;
         let expected_updates = expected_rows;
-        let expected_queries = expected_selects + expected_updates;
+        // Note: frameworks are allowed to do the updates in a single bulk query so some frameworks will
+        // have only 1 update query for every 20 select queries. so we only need to verify that at least
+        // this number of queries were performed.
+        // i.e. if concurrency = 1, then we will have:
+        // 20 * 2 = 40 rows updated 
+        // 20 * 2 = 40 select queries 
+        // 1 * 2 = 2 update queries = 42 expected queries in total
+        let expected_queries = expected_rows / 20;
         let min = 1;
         let max = 500;
 
