@@ -44,8 +44,8 @@ impl Executor for Updates {
         // have only 1 update query for every 20 select queries. so we only need to verify that at least
         // this number of queries were performed.
         // i.e. if concurrency = 1, then we will have:
-        // 20 * 2 = 40 rows updated 
-        // 20 * 2 = 40 select queries 
+        // 20 * 2 = 40 rows updated
+        // 20 * 2 = 40 select queries
         // 1 * 2 = 2 update queries = 42 expected queries in total
         let expected_queries = expected_rows / 20;
         let min = 1;
@@ -59,46 +59,47 @@ impl Executor for Updates {
             let expected_length = self.translate_query_count(*test_case, min, max);
             let count_url = format!("{}{}", url, test_case);
 
-            let response_body = get_response_body(&count_url, &mut messages);
-            messages.body(&response_body);
-            self.verify_with_length(&response_body, expected_length, &mut messages);
+            if let Some(response_body) = get_response_body(&count_url, &mut messages) {
+                messages.body(&response_body);
+                self.verify_with_length(&response_body, expected_length, &mut messages);
 
-            // Only check update changes if we're testing the highest number of
-            // queries, to ensure that we don't accidentally FAIL for a query
-            // that only updates 1 item and happens to set its randomNumber to
-            // the same value it previously held
-            if expected_length == max {
-                self.database_verifier.verify_queries_count(
-                    &format!("{}20", url),
-                    "world",
-                    concurrency,
-                    repetitions,
-                    expected_queries,
-                    &mut messages,
-                );
-                self.database_verifier.verify_rows_count(
-                    &format!("{}20", url),
-                    "world",
-                    concurrency,
-                    repetitions,
-                    expected_rows,
-                    1,
-                    &mut messages,
-                );
-                self.verify_updates_count(
-                    &format!("{}20", url),
-                    "world",
-                    concurrency,
-                    repetitions,
-                    expected_updates,
-                    &mut messages,
-                );
-                self.verify_updates(
-                    &format!("{}20", url),
-                    concurrency,
-                    repetitions,
-                    &mut messages,
-                )
+                // Only check update changes if we're testing the highest number of
+                // queries, to ensure that we don't accidentally FAIL for a query
+                // that only updates 1 item and happens to set its randomNumber to
+                // the same value it previously held
+                if expected_length == max {
+                    self.database_verifier.verify_queries_count(
+                        &format!("{}20", url),
+                        "world",
+                        concurrency,
+                        repetitions,
+                        expected_queries,
+                        &mut messages,
+                    );
+                    self.database_verifier.verify_rows_count(
+                        &format!("{}20", url),
+                        "world",
+                        concurrency,
+                        repetitions,
+                        expected_rows,
+                        1,
+                        &mut messages,
+                    );
+                    self.verify_updates_count(
+                        &format!("{}20", url),
+                        "world",
+                        concurrency,
+                        repetitions,
+                        expected_updates,
+                        &mut messages,
+                    );
+                    self.verify_updates(
+                        &format!("{}20", url),
+                        concurrency,
+                        repetitions,
+                        &mut messages,
+                    )
+                }
             }
         }
 

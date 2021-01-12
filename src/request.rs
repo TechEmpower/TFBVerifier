@@ -32,7 +32,7 @@ pub fn request(url: &str) -> VerifierResult<Vec<u8>> {
     }
 }
 
-pub fn get_response_body(url: &str, messages: &mut Messages) -> String {
+pub fn get_response_body(url: &str, messages: &mut Messages) -> Option<String> {
     log(
         format!("Accessing URL {}", url).cyan(),
         LogOptions {
@@ -43,23 +43,29 @@ pub fn get_response_body(url: &str, messages: &mut Messages) -> String {
     );
 
     match request(url) {
-        Ok(bytes) => String::from_utf8_lossy(&*bytes).to_string(),
+        Ok(bytes) => Some(String::from_utf8_lossy(&*bytes).to_string()),
         Err(e) => match e {
             Non200Response(url, code) => {
                 messages.error(
                     format!("Non-200 response from {}: {}", url, code),
                     "Non-200 response",
                 );
-                String::new()
+                None
             }
             RequestError(url, err_string) => {
                 messages.error(
                     format!("Error requesting {}: {}", url, err_string),
                     "Request error",
                 );
-                String::new()
+                None
             }
-            _ => String::new(),
+            _ => {
+                messages.error(
+                    format!("Unknown error requesting {}: {:?}", url, e),
+                    "Unknown error",
+                );
+                None
+            }
         },
     }
 }

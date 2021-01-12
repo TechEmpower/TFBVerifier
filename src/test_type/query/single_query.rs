@@ -36,33 +36,34 @@ impl Executor for SingleQuery {
         let response_headers = get_response_headers(&url, &mut messages)?;
         messages.headers(&response_headers);
         self.verify_headers(&response_headers, &url, ContentType::Json, &mut messages);
-        let response_body = get_response_body(&url, &mut messages);
-        messages.body(&response_body);
+        if let Some(response_body) = get_response_body(&url, &mut messages) {
+            messages.body(&response_body);
 
-        // Initialization for query counting
-        let repetitions = 2;
-        let concurrency = *self.concurrency_levels.iter().max().unwrap();
-        let expected_queries = repetitions * concurrency;
-        let expected_rows = expected_queries;
+            // Initialization for query counting
+            let repetitions = 2;
+            let concurrency = *self.concurrency_levels.iter().max().unwrap();
+            let expected_queries = repetitions * concurrency;
+            let expected_rows = expected_queries;
 
-        self.verify_single_query(&response_body, &mut messages);
-        self.database_verifier.verify_queries_count(
-            url,
-            "world",
-            concurrency,
-            repetitions,
-            expected_queries,
-            &mut messages,
-        );
-        self.database_verifier.verify_rows_count(
-            url,
-            "world",
-            concurrency,
-            repetitions,
-            expected_rows,
-            1,
-            &mut messages,
-        );
+            self.verify_single_query(&response_body, &mut messages);
+            self.database_verifier.verify_queries_count(
+                url,
+                "world",
+                concurrency,
+                repetitions,
+                expected_queries,
+                &mut messages,
+            );
+            self.database_verifier.verify_rows_count(
+                url,
+                "world",
+                concurrency,
+                repetitions,
+                expected_rows,
+                1,
+                &mut messages,
+            );
+        }
 
         Ok(messages)
     }

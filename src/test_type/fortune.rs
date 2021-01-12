@@ -49,38 +49,35 @@ impl Executor for Fortune {
         messages.headers(&response_headers);
         self.verify_headers(&response_headers, &url, ContentType::Html, &mut messages);
 
-        let response_body = get_response_body(&url, &mut messages);
-        let mut accumulator = String::new();
-        for line in response_body.lines() {
-            accumulator.push_str(line);
-        }
-        messages.body(&accumulator);
+        if let Some(response_body) = get_response_body(&url, &mut messages) {
+            let mut accumulator = String::new();
+            for line in response_body.lines() {
+                accumulator.push_str(line);
+            }
+            messages.body(&accumulator);
 
-        let verified = self.verify_fortune(&response_body, &mut messages);
-        self.database_verifier.verify_queries_count(
-            url,
-            "fortune",
-            concurrency,
-            repetitions,
-            expected_queries,
-            &mut messages,
-        );
-        self.database_verifier.verify_rows_count(
-            url,
-            "fortune",
-            concurrency,
-            repetitions,
-            expected_rows,
-            12,
-            &mut messages,
-        );
-        if verified {
-            self.verify_fortunes_are_dynamically_sized(&url, &mut messages);
+            if self.verify_fortune(&response_body, &mut messages) {
+                self.database_verifier.verify_queries_count(
+                    url,
+                    "fortune",
+                    concurrency,
+                    repetitions,
+                    expected_queries,
+                    &mut messages,
+                );
+                self.database_verifier.verify_rows_count(
+                    url,
+                    "fortune",
+                    concurrency,
+                    repetitions,
+                    expected_rows,
+                    12,
+                    &mut messages,
+                );
+
+                self.verify_fortunes_are_dynamically_sized(&url, &mut messages);
+            }
         }
-        // Note: we call this again because internally `verify_fortunes_are...`
-        // will set the body to its extra-large variant and we don't want to
-        // output that.
-        messages.body(&response_body);
 
         Ok(messages)
     }
@@ -117,7 +114,12 @@ impl Fortune {
             // todo - report a useful diff rather than spitting them out raw.
             messages.error(
                 format!(
-                    "Invalid fortunes; expected {} but received {}",
+                    r"Invalid fortunes; 
+     Expected: 
+        {}
+     
+     Received: 
+        {}",
                     FORTUNES, fortunes
                 ),
                 "Invalid Fortunes",
@@ -157,33 +159,37 @@ impl Fortune {
         }
         more_fortunes.push_str("</table></body></html>");
 
-        let response_body = get_response_body(&url, messages);
-        let mut accumulator = String::new();
-        for line in response_body.lines() {
-            accumulator.push_str(line);
-        }
-        // truncate the single-line for rendering
-        accumulator = accumulator[..500].to_string();
-        accumulator.push_str("...");
-        messages.body(&accumulator);
+        if let Some(response_body) = get_response_body(&url, messages) {
+            let mut accumulator = String::new();
+            for line in response_body.lines() {
+                accumulator.push_str(line);
+            }
+            let min_len = 75;
+            if accumulator.len() >= min_len {
+                // truncate the single-line for rendering
+                accumulator = accumulator[..min_len].to_string();
+                accumulator.push_str(" ... ");
+                messages.body(&accumulator);
+            }
 
-        let fortunes = normalize_html(&response_body);
+            let fortunes = normalize_html(&response_body);
 
-        // We explicitly *do not* check that the strings are equal here because
-        // of how different implementations will order equal strings. E.g. we
-        // added a bunch of copies of the last fortune above, and we order by
-        // that column - it is valid to put them in any order because they are
-        // all equal. Instead, after normalizing both, we check that we have
-        // the same character count.
-        if fortunes.chars().count() != more_fortunes.chars().count() {
-            messages.error(
-                format!(
-                    "Fortunes not dynamically sized. Expected length: {}; actual length: {}",
-                    more_fortunes.len(),
-                    fortunes.len()
-                ),
-                "Non-dynamic Fortune",
-            );
+            // We explicitly *do not* check that the strings are equal here because
+            // of how different implementations will order equal strings. E.g. we
+            // added a bunch of copies of the last fortune above, and we order by
+            // that column - it is valid to put them in any order because they are
+            // all equal. Instead, after normalizing both, we check that we have
+            // the same character count.
+            if fortunes.chars().count() != more_fortunes.chars().count() {
+                messages.error(
+                    format!(
+                        "Fortunes not dynamically sized. Expected length: {}; actual length: {}",
+                        more_fortunes.len(),
+                        fortunes.len()
+                    ),
+                    "Non-dynamic Fortune",
+                );
+            }
         }
     }
 }
@@ -201,8 +207,11 @@ impl<'accum> TokenSink for FortunesAccumulator<'accum> {
                 }
             }
             CharacterTokens(b) => {
-                self.accumulator
-                    .push_str(&normalize_text(&String::from_utf8_lossy(b.as_bytes())));
+                let str = String::from_utf8_lossy(b.as_bytes());
+                let str = str.trim();
+                if !str.is_empty() {
+                    self.accumulator.push_str(&normalize_text(&str));
+                }
             }
             TagToken(tag) => match tag.kind {
                 html5ever::tokenizer::StartTag => {

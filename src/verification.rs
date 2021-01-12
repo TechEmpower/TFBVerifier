@@ -107,10 +107,9 @@ impl Messages {
     pub fn output_verification_results(&self) {
         if self.errors.is_empty() && self.warnings.is_empty() {
             println!("   {}", "PASS".green());
-        }
-        if !self.warnings.is_empty() {
-            println!("   {}", "WARN".yellow());
+        } else {
             for warning in &self.warnings {
+                println!("   {}", "WARN".yellow());
                 println!("     {}", warning.message);
                 println!("     See https://github.com/TechEmpower/FrameworkBenchmarks/wiki/Project-Information-Framework-Tests-Overview#specific-test-requirements");
                 if !warning.url.is_empty() {
@@ -123,10 +122,8 @@ impl Messages {
                     println!("{}", warning.body);
                 }
             }
-        }
-        if !self.errors.is_empty() {
-            println!("   {}", "ERROR".red());
             for error in &self.errors {
+                println!("   {}", "ERROR".red());
                 println!("     {}", error.message);
                 println!("     See https://github.com/TechEmpower/FrameworkBenchmarks/wiki/Project-Information-Framework-Tests-Overview#specific-test-requirements");
                 if !error.url.is_empty() {
