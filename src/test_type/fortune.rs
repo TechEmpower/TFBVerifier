@@ -208,8 +208,7 @@ impl<'accum> TokenSink for FortunesAccumulator<'accum> {
             }
             CharacterTokens(b) => {
                 let str = String::from_utf8_lossy(b.as_bytes());
-                let str = str.trim();
-                if !str.is_empty() {
+                if !str.trim().is_empty() {
                     self.accumulator.push_str(&normalize_text(&str));
                 }
             }
