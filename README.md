@@ -1,5 +1,7 @@
 # TFBVerifier
 
+[![Build Status](https://github.com/TechEmpower/TFBVerifier/workflows/build/badge.svg?branch=master&event=push)](https://github.com/TechEmpower/TFBVerifier/actions?query=workflow%3Abuild+branch%3Amaster)
+
 The application that verifies the response from an application running in the
 [TechEmpower Framework Benchmarks](https://github.com/TechEmpower/FrameworkBenchmarks).
 
