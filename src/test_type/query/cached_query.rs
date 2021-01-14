@@ -13,6 +13,10 @@ pub struct CachedQuery {
 }
 impl Query for CachedQuery {}
 impl Executor for CachedQuery {
+    fn wait_for_database_to_be_available(&self) {
+        self.database_verifier.wait_for_database_to_be_available();
+    }
+    
     fn retrieve_benchmark_commands(&self, url: &str) -> VerifierResult<BenchmarkCommands> {
         let primer_command = self.get_wrk_command(url, 5, 8);
         let warmup_command =

@@ -5,6 +5,7 @@ use strum_macros::EnumString;
 #[derive(EnumString)]
 #[strum(serialize_all = "lowercase")]
 pub enum Mode {
+    Database,
     Verify,
     Benchmark,
     Unknown(String),

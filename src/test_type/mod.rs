@@ -70,7 +70,7 @@ impl TestType {
     /// Gets an `Executor` for the given `test_type_name`.
     pub fn get_executor(
         &self,
-        database_name: Option<String>,
+        database_name: &Option<String>,
         concurrency_levels: Vec<u32>,
         pipeline_concurrency_levels: Vec<u32>,
     ) -> VerifierResult<Box<dyn Executor>> {
@@ -105,6 +105,7 @@ impl TestType {
                 pipeline_concurrency_levels,
             })),
             TestType::Unknown(test_type) => Ok(Box::new(Unknown {
+                database_verifier: database.unwrap(),
                 test_type: test_type.clone(),
             })),
         }
@@ -119,6 +120,8 @@ impl TestType {
 /// implementation will request said url, capture the response headers and
 /// body, and against them perform a verification or benchmark.
 pub trait Executor {
+    fn wait_for_database_to_be_available(&self);
+
     /// Gets the `BenchmarkCommands` for the given url.
     ///
     /// Note: this method is not expected to produce results of the benchmark

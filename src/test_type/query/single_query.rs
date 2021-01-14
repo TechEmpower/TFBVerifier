@@ -14,6 +14,10 @@ pub struct SingleQuery {
 }
 impl Query for SingleQuery {}
 impl Executor for SingleQuery {
+    fn wait_for_database_to_be_available(&self) {
+        self.database_verifier.wait_for_database_to_be_available();
+    }
+    
     fn retrieve_benchmark_commands(&self, url: &str) -> VerifierResult<BenchmarkCommands> {
         let primer_command = self.get_wrk_command(url, 5, 8);
         let warmup_command =

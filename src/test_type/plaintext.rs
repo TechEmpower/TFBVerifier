@@ -9,6 +9,10 @@ pub struct Plaintext {
     pub pipeline_concurrency_levels: Vec<u32>,
 }
 impl Executor for Plaintext {
+    fn wait_for_database_to_be_available(&self) {
+        // No database; intentionally blank.
+    }
+    
     fn retrieve_benchmark_commands(&self, url: &str) -> VerifierResult<BenchmarkCommands> {
         let primer_command = self.get_wrk_command(url, 5, 8);
         let warmup_command = self.get_wrk_command(

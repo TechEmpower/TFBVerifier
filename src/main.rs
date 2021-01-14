@@ -37,7 +37,7 @@ fn main() -> VerifierResult<()> {
     let url = format!("http://{}:{}{}", "tfb-server", port, endpoint);
 
     let executor = test_type.get_executor(
-        database,
+        &database,
         concurrency_levels
             .split(',')
             .map(|item| u32::from_str(item).unwrap())
@@ -49,6 +49,12 @@ fn main() -> VerifierResult<()> {
     )?;
 
     match Mode::get(&mode_name)? {
+        Mode::Database => {
+            if database.as_ref().is_some() {
+                // Block until the database is accepting requests
+                executor.wait_for_database_to_be_available();
+            }
+        }
         Mode::Benchmark => {
             let benchmark = executor.retrieve_benchmark_commands(&url)?;
             send_benchmark_commands(benchmark);

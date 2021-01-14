@@ -203,6 +203,8 @@ pub trait DatabaseInterface {
         }
     }
 
+    fn wait_for_database_to_be_available(&self);
+
     /// Gets all of the `world` table (or analogue) entries from the underlying
     /// database and returns them as a map from `id` to `randomnumber`.
     fn get_all_from_world_table(&self) -> HashMap<i32, i32>;

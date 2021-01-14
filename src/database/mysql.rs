@@ -1,8 +1,11 @@
 use crate::database::DatabaseInterface;
+use crate::verification::Messages;
 use mysql::params;
 use mysql::prelude::Queryable;
 use mysql::{Params, Pool, PooledConn};
 use std::collections::HashMap;
+use std::thread::sleep;
+use std::time::Duration;
 
 #[derive(Debug)]
 pub struct Mysql {}
@@ -42,6 +45,27 @@ impl Mysql {
     }
 }
 impl DatabaseInterface for Mysql {
+    fn wait_for_database_to_be_available(&self) {
+        let mut messages = Messages::default();
+        let max = 60;
+        let mut slept = 0;
+        while slept < max {
+            if self.get_client().is_some() {
+                return;
+            }
+
+            sleep(Duration::from_secs(1));
+            slept += 1;
+        }
+        messages.error(
+            format!(
+                "Database connection could not be established after {} seconds.",
+                max
+            ),
+            "Database unavailable",
+        );
+    }
+
     fn get_all_from_world_table(&self) -> HashMap<i32, i32> {
         let mut to_ret = HashMap::new();
         if let Some(mut client) = self.get_client() {
@@ -80,8 +104,8 @@ impl DatabaseInterface for Mysql {
                 // Deliberately left empty. In the case of success, then great
                 // we can exit this function and the assumption is that the DB
                 // has the correct number of rows. If not, then the verifier
-                // will fail because the *correct* number of rows is never 
-                // returned to the application, which will never correctly 
+                // will fail because the *correct* number of rows is never
+                // returned to the application, which will never correctly
                 // verify with the verifier.
             }
         }

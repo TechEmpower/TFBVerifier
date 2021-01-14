@@ -1,6 +1,9 @@
 use crate::database::DatabaseInterface;
+use crate::verification::Messages;
 use postgres::{Client, NoTls};
 use std::collections::HashMap;
+use std::thread::sleep;
+use std::time::Duration;
 
 #[derive(Debug)]
 pub struct Postgres {}
@@ -30,6 +33,27 @@ impl Postgres {
     }
 }
 impl DatabaseInterface for Postgres {
+    fn wait_for_database_to_be_available(&self) {
+        let mut messages = Messages::default();
+        let max = 60;
+        let mut slept = 0;
+        while slept < max {
+            if self.get_client().is_some() {
+                return;
+            }
+
+            sleep(Duration::from_secs(1));
+            slept += 1;
+        }
+        messages.error(
+            format!(
+                "Database connection could not be established after {} seconds.",
+                max
+            ),
+            "Database unavailable",
+        );
+    }
+
     fn get_all_from_world_table(&self) -> HashMap<i32, i32> {
         let mut to_ret = HashMap::new();
         if let Some(mut client) = self.get_client() {
