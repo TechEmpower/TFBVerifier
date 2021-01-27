@@ -12,7 +12,7 @@ impl Executor for Plaintext {
     fn wait_for_database_to_be_available(&self) {
         // No database; intentionally blank.
     }
-    
+
     fn retrieve_benchmark_commands(&self, url: &str) -> VerifierResult<BenchmarkCommands> {
         let primer_command = self.get_wrk_command(url, 5, 8);
         let warmup_command = self.get_wrk_command(
@@ -35,18 +35,19 @@ impl Executor for Plaintext {
     fn verify(&self, url: &str) -> VerifierResult<Messages> {
         let mut messages = Messages::new(url);
 
-        let response_headers = get_response_headers(&url, &mut messages)?;
-        messages.headers(&response_headers);
-        self.verify_headers(
-            &response_headers,
-            &url,
-            ContentType::Plaintext,
-            &mut messages,
-        );
-        if let Some(response_body) = get_response_body(&url, &mut messages) {
-            messages.body(&response_body);
+        if let Ok(response_headers) = get_response_headers(&url, &mut messages) {
+            messages.headers(&response_headers);
+            self.verify_headers(
+                &response_headers,
+                &url,
+                ContentType::Plaintext,
+                &mut messages,
+            );
+            if let Some(response_body) = get_response_body(&url, &mut messages) {
+                messages.body(&response_body);
 
-            self.verify_plaintext(&response_body, &mut messages);
+                self.verify_plaintext(&response_body, &mut messages);
+            }
         }
 
         Ok(messages)

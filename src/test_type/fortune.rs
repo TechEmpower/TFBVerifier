@@ -49,37 +49,38 @@ impl Executor for Fortune {
         let expected_queries = repetitions * concurrency;
         let expected_rows = 12 * expected_queries;
 
-        let response_headers = get_response_headers(&url, &mut messages)?;
-        messages.headers(&response_headers);
-        self.verify_headers(&response_headers, &url, ContentType::Html, &mut messages);
+        if let Ok(response_headers) = get_response_headers(&url, &mut messages) {
+            messages.headers(&response_headers);
+            self.verify_headers(&response_headers, &url, ContentType::Html, &mut messages);
 
-        if let Some(response_body) = get_response_body(&url, &mut messages) {
-            let mut accumulator = String::new();
-            for line in response_body.lines() {
-                accumulator.push_str(line);
-            }
-            messages.body(&accumulator);
+            if let Some(response_body) = get_response_body(&url, &mut messages) {
+                let mut accumulator = String::new();
+                for line in response_body.lines() {
+                    accumulator.push_str(line);
+                }
+                messages.body(&accumulator);
 
-            if self.verify_fortune(&response_body, &mut messages) {
-                self.database_verifier.verify_queries_count(
-                    url,
-                    "fortune",
-                    concurrency,
-                    repetitions,
-                    expected_queries,
-                    &mut messages,
-                );
-                self.database_verifier.verify_rows_count(
-                    url,
-                    "fortune",
-                    concurrency,
-                    repetitions,
-                    expected_rows,
-                    12,
-                    &mut messages,
-                );
+                if self.verify_fortune(&response_body, &mut messages) {
+                    self.database_verifier.verify_queries_count(
+                        url,
+                        "fortune",
+                        concurrency,
+                        repetitions,
+                        expected_queries,
+                        &mut messages,
+                    );
+                    self.database_verifier.verify_rows_count(
+                        url,
+                        "fortune",
+                        concurrency,
+                        repetitions,
+                        expected_rows,
+                        12,
+                        &mut messages,
+                    );
 
-                self.verify_fortunes_are_dynamically_sized(&url, &mut messages);
+                    self.verify_fortunes_are_dynamically_sized(&url, &mut messages);
+                }
             }
         }
 

@@ -16,7 +16,7 @@ impl Executor for MultiQuery {
     fn wait_for_database_to_be_available(&self) {
         self.database_verifier.wait_for_database_to_be_available();
     }
-    
+
     fn retrieve_benchmark_commands(&self, url: &str) -> VerifierResult<BenchmarkCommands> {
         let primer_command = self.get_wrk_command(url, 5, 8);
         let warmup_command =
@@ -54,44 +54,48 @@ impl Executor for MultiQuery {
         let expected_queries = 20 * repetitions * concurrency;
         let expected_rows = expected_queries;
 
-        let response_headers = get_response_headers(&url, &mut messages)?;
-        messages.headers(&response_headers);
-        self.verify_headers(&response_headers, &url, ContentType::Json, &mut messages);
+        // Because this test type is going to make a LOT of requests with a reasonably long timeout,
+        // we use `get_response_headers` as a sentinel. If a `CurlError` is thrown, then we do not
+        // perform any of the follow-up requests to conserve time.
+        if let Ok(response_headers) = get_response_headers(&url, &mut messages) {
+            messages.headers(&response_headers);
+            self.verify_headers(&response_headers, &url, ContentType::Json, &mut messages);
 
-        let test_cases = ["2", "0", "foo", "501", ""];
-        let min = 1;
-        let max = 500;
+            let test_cases = ["2", "0", "foo", "501", ""];
+            let min = 1;
+            let max = 500;
 
-        for test_case in test_cases.iter() {
-            let expected_length = self.translate_query_count(*test_case, min, max);
-            let count_url = format!("{}{}", url, test_case);
+            for test_case in test_cases.iter() {
+                let expected_length = self.translate_query_count(*test_case, min, max);
+                let count_url = format!("{}{}", url, test_case);
 
-            if let Some(response_body) = get_response_body(&count_url, &mut messages) {
-                messages.body(&response_body);
-                self.verify_with_length(&response_body, expected_length, &mut messages);
+                if let Some(response_body) = get_response_body(&count_url, &mut messages) {
+                    messages.body(&response_body);
+                    self.verify_with_length(&response_body, expected_length, &mut messages);
 
-                // Only check update changes if we're testing the highest number of
-                // queries, to ensure that we don't accidentally FAIL for a query
-                // that only updates 1 item and happens to set its randomNumber to
-                // the same value it previously held
-                if expected_length == max {
-                    self.database_verifier.verify_queries_count(
-                        &format!("{}20", url),
-                        "world",
-                        concurrency,
-                        repetitions,
-                        expected_queries,
-                        &mut messages,
-                    );
-                    self.database_verifier.verify_rows_count(
-                        &format!("{}20", url),
-                        "world",
-                        concurrency,
-                        repetitions,
-                        expected_rows,
-                        1,
-                        &mut messages,
-                    );
+                    // Only check update changes if we're testing the highest number of
+                    // queries, to ensure that we don't accidentally FAIL for a query
+                    // that only updates 1 item and happens to set its randomNumber to
+                    // the same value it previously held
+                    if expected_length == max {
+                        self.database_verifier.verify_queries_count(
+                            &format!("{}20", url),
+                            "world",
+                            concurrency,
+                            repetitions,
+                            expected_queries,
+                            &mut messages,
+                        );
+                        self.database_verifier.verify_rows_count(
+                            &format!("{}20", url),
+                            "world",
+                            concurrency,
+                            repetitions,
+                            expected_rows,
+                            1,
+                            &mut messages,
+                        );
+                    }
                 }
             }
         }

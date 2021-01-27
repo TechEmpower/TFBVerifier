@@ -1,4 +1,4 @@
-use crate::error::VerifierError::{Non200Response, RequestError};
+use crate::error::VerifierError::{CurlError, Non200Response, RequestError};
 use crate::error::VerifierResult;
 use crate::logger::{log, LogOptions};
 use crate::verification::Messages;
@@ -89,10 +89,13 @@ pub fn get_response_headers(
             .unwrap();
         match transfer.perform() {
             Ok(_) => {}
-            Err(e) => messages.error(
-                format!("Error requesting headers for url: {}, {:?}", url, e),
-                "Header(s) Error",
-            ),
+            Err(e) => {
+                messages.error(
+                    format!("Error requesting headers for url: {}, {:?}", url, e),
+                    "Header(s) Error",
+                );
+                return Err(CurlError(e));
+            }
         };
     }
     for header in header_vec {

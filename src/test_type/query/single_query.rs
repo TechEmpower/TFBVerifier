@@ -17,7 +17,7 @@ impl Executor for SingleQuery {
     fn wait_for_database_to_be_available(&self) {
         self.database_verifier.wait_for_database_to_be_available();
     }
-    
+
     fn retrieve_benchmark_commands(&self, url: &str) -> VerifierResult<BenchmarkCommands> {
         let primer_command = self.get_wrk_command(url, 5, 8);
         let warmup_command =
@@ -37,36 +37,40 @@ impl Executor for SingleQuery {
     fn verify(&self, url: &str) -> VerifierResult<Messages> {
         let mut messages = Messages::new(url);
 
-        let response_headers = get_response_headers(&url, &mut messages)?;
-        messages.headers(&response_headers);
-        self.verify_headers(&response_headers, &url, ContentType::Json, &mut messages);
-        if let Some(response_body) = get_response_body(&url, &mut messages) {
-            messages.body(&response_body);
+        // Because this test type is going to make a LOT of requests with a reasonably long timeout,
+        // we use `get_response_headers` as a sentinel. If a `CurlError` is thrown, then we do not
+        // perform any of the follow-up requests to conserve time.
+        if let Ok(response_headers) = get_response_headers(&url, &mut messages) {
+            messages.headers(&response_headers);
+            self.verify_headers(&response_headers, &url, ContentType::Json, &mut messages);
+            if let Some(response_body) = get_response_body(&url, &mut messages) {
+                messages.body(&response_body);
 
-            // Initialization for query counting
-            let repetitions = 2;
-            let concurrency = *self.concurrency_levels.iter().max().unwrap();
-            let expected_queries = repetitions * concurrency;
-            let expected_rows = expected_queries;
+                // Initialization for query counting
+                let repetitions = 2;
+                let concurrency = *self.concurrency_levels.iter().max().unwrap();
+                let expected_queries = repetitions * concurrency;
+                let expected_rows = expected_queries;
 
-            self.verify_single_query(&response_body, &mut messages);
-            self.database_verifier.verify_queries_count(
-                url,
-                "world",
-                concurrency,
-                repetitions,
-                expected_queries,
-                &mut messages,
-            );
-            self.database_verifier.verify_rows_count(
-                url,
-                "world",
-                concurrency,
-                repetitions,
-                expected_rows,
-                1,
-                &mut messages,
-            );
+                self.verify_single_query(&response_body, &mut messages);
+                self.database_verifier.verify_queries_count(
+                    url,
+                    "world",
+                    concurrency,
+                    repetitions,
+                    expected_queries,
+                    &mut messages,
+                );
+                self.database_verifier.verify_rows_count(
+                    url,
+                    "world",
+                    concurrency,
+                    repetitions,
+                    expected_rows,
+                    1,
+                    &mut messages,
+                );
+            }
         }
 
         Ok(messages)

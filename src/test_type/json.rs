@@ -33,13 +33,14 @@ impl Executor for Json {
     fn verify(&self, url: &str) -> VerifierResult<Messages> {
         let mut messages = Messages::new(url);
 
-        let response_headers = get_response_headers(&url, &mut messages)?;
-        messages.headers(&response_headers);
-        self.verify_headers(&response_headers, &url, ContentType::Json, &mut messages);
-        if let Some(response_body) = get_response_body(&url, &mut messages) {
-            messages.body(&response_body);
+        if let Ok(response_headers) = get_response_headers(&url, &mut messages) {
+            messages.headers(&response_headers);
+            self.verify_headers(&response_headers, &url, ContentType::Json, &mut messages);
+            if let Some(response_body) = get_response_body(&url, &mut messages) {
+                messages.body(&response_body);
 
-            self.verify_json(&response_body, &mut messages);
+                self.verify_json(&response_body, &mut messages);
+            }
         }
 
         Ok(messages)
