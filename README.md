@@ -49,7 +49,7 @@ $ cargo build --release
 ### Installing
 
 ```
-$ docker build -t tfb.verifier .
+$ docker build -t techempower/tfb.verifier .
 ```
 
 ## Running

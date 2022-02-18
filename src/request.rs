@@ -99,10 +99,10 @@ pub fn get_response_headers(
         };
     }
     for header in header_vec {
-        let split: Vec<&str> = header.split(": ").collect();
-        if split.len() == 2 {
+        let split: Vec<&str> = header.split(":").collect();
+        if split.len() >= 2 {
             let key = split.get(0).unwrap().trim().to_string().clone();
-            let value = split.get(1).unwrap().trim().to_string().clone();
+            let value = split[1..].join(":").trim().to_string().clone();
             headers.insert(key, value);
         }
     }
